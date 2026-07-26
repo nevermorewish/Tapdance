@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import type { ApiSettings, ModelSourceId } from '../../../types.ts';
 import type { ModelInvocationLogEntry } from '../../../services/modelInvocationLog.ts';
@@ -5,6 +6,8 @@ import type { SeedanceHealth } from '../../fastVideoFlow/types/fastTypes.ts';
 import type { MockApiServerStatus } from '../../../services/mockApiConfig.ts';
 import type { ModelProviderId, ModelRole } from '../../../services/apiConfig.ts';
 import { isNewApiAuthenticated } from '../../../services/newApiAuth.ts';
+import { fetchNewApiBalance } from '../../../services/newApiAuth.ts';
+import { BRAND } from '../../../config/brand.ts';
 
 type Props = {
   apiSettings: ApiSettings;
@@ -33,6 +36,7 @@ type Props = {
 export function ApiConfigPage({ apiSettings, setApiSettings, onRestoreDefaults }: Props) {
   const config = apiSettings.newapi;
   const isAuthenticated = isNewApiAuthenticated(config);
+  const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
   const update = (patch: Partial<typeof config>) => setApiSettings((previous) => {
     const next = { ...previous.newapi, ...patch };
     return {
@@ -55,10 +59,25 @@ export function ApiConfigPage({ apiSettings, setApiSettings, onRestoreDefaults }
   });
   const logout = () => setApiSettings((previous) => ({
     ...previous,
-    newapi: { ...previous.newapi, apiKey: '', user: null, tokens: [], selectedTokenId: null },
+    newapi: { ...previous.newapi, apiKey: '', user: null, tokens: [], selectedTokenId: null, balance: null },
     volcengine: { ...previous.volcengine, apiKey: '' },
     openai: { ...previous.openai, apiKey: '' },
   }));
+  const refreshBalance = async () => {
+    if (!isAuthenticated || isRefreshingBalance) return;
+    setIsRefreshingBalance(true);
+    try {
+      const balance = await fetchNewApiBalance(config);
+      setApiSettings((previous) => ({ ...previous, newapi: { ...previous.newapi, balance } }));
+    } finally {
+      setIsRefreshingBalance(false);
+    }
+  };
+  const balanceLabel = config.balance
+    ? config.balance.displayInCurrency
+      ? `¥${(config.balance.quota / Math.max(1, config.balance.quotaPerUnit)).toFixed(2)}`
+      : config.balance.quota.toLocaleString('zh-CN')
+    : '暂无余额';
 
   return (
     <section className="mx-auto max-w-4xl space-y-6 py-8">
@@ -94,6 +113,32 @@ export function ApiConfigPage({ apiSettings, setApiSettings, onRestoreDefaults }
           {isAuthenticated ? <button type="button" onClick={logout} className="studio-button studio-button-secondary px-4 py-2 text-xs">退出登录</button> : null}
           <button type="button" onClick={onRestoreDefaults} className="studio-button studio-button-secondary px-4 py-2 text-xs">恢复默认模型</button>
         </div>
+      </div>
+
+      <div className="rounded-3xl border border-emerald-400/15 bg-emerald-400/5 p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-300">Account</div>
+            <h2 className="mt-2 text-xl font-semibold text-white">账号与余额</h2>
+            <p className="mt-2 text-sm text-zinc-400">注册、充值和余额信息使用当前品牌配置的服务地址。</p>
+          </div>
+          {isAuthenticated ? (
+            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-right">
+              <div className="text-xs text-emerald-200">当前用户</div>
+              <div className="mt-1 font-semibold text-white">{config.user?.displayName || config.user?.username || '已登录'}</div>
+              {config.user?.displayName && config.user.displayName !== config.user.username ? <div className="text-xs text-emerald-100/70">@{config.user.username}</div> : null}
+            </div>
+          ) : null}
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-black/15 px-4 py-3">
+            <div className="text-xs text-zinc-500">可用余额</div>
+            <div className="mt-1 text-2xl font-semibold text-emerald-200">{balanceLabel}</div>
+          </div>
+          <button type="button" onClick={() => window.open(BRAND.registerUrl, '_blank', 'noopener,noreferrer')} className="studio-button studio-button-secondary justify-center">注册账号</button>
+          <button type="button" onClick={() => window.open(BRAND.rechargeUrl, '_blank', 'noopener,noreferrer')} className="studio-button studio-button-primary justify-center">充值</button>
+        </div>
+        {isAuthenticated ? <button type="button" onClick={() => void refreshBalance()} disabled={isRefreshingBalance} className="mt-4 text-xs text-zinc-400 hover:text-white">{isRefreshingBalance ? '正在刷新余额…' : '刷新余额'}</button> : <div className="mt-4 text-xs text-zinc-500">登录后显示用户名和实时余额。</div>}
       </div>
 
       <div className="rounded-3xl border border-cyan-400/15 bg-cyan-400/5 p-6 text-sm leading-7 text-zinc-300">

@@ -15,6 +15,7 @@ public/portraits/
 out/
 output/
 release/
+electron-builder.generated.json
 docs/projects/
 scratch
 scripts/generate-media

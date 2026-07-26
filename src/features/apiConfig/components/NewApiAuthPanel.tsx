@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { ApiSettings } from '../../../types.ts';
 import { applyNewApiAuth, loginToNewApi, registerNewApi } from '../../../services/newApiAuth.ts';
+import { fetchNewApiBalance } from '../../../services/newApiAuth.ts';
+import { BRAND } from '../../../config/brand.ts';
 
 type Props = {
   apiSettings: ApiSettings;
@@ -36,6 +38,12 @@ export function NewApiAuthPanel({ apiSettings, setApiSettings, onAuthenticated }
       }
       const result = await loginToNewApi(config, username.trim(), password);
       setApiSettings((previous) => applyNewApiAuth({ ...previous, newapi: { ...previous.newapi, baseUrl: baseUrl.trim() } }, result));
+      try {
+        const balance = await fetchNewApiBalance({ baseUrl: baseUrl.trim() });
+        setApiSettings((previous) => ({ ...previous, newapi: { ...previous.newapi, balance } }));
+      } catch (balanceError) {
+        console.warn('读取 NewAPI 余额失败', balanceError);
+      }
       setMessage(`已登录 NewAPI：${result.user.username}`);
       onAuthenticated?.();
     } catch (error) {
@@ -61,6 +69,10 @@ export function NewApiAuthPanel({ apiSettings, setApiSettings, onAuthenticated }
       </div>
       {message ? <div className="mt-4 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">{message}</div> : null}
       <button type="button" onClick={() => void submit()} disabled={busy} className="studio-button studio-button-primary mt-6 w-full justify-center">{busy ? '处理中…' : mode === 'login' ? '登录并连接' : '注册账号'}</button>
+      <div className="mt-4 flex items-center justify-center gap-4 text-xs text-zinc-400">
+        <button type="button" onClick={() => window.open(BRAND.registerUrl, '_blank', 'noopener,noreferrer')} className="hover:text-white">前往官网注册</button>
+        <button type="button" onClick={() => window.open(BRAND.rechargeUrl, '_blank', 'noopener,noreferrer')} className="hover:text-white">充值</button>
+      </div>
       <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setMessage(''); }} className="mt-4 w-full text-sm text-zinc-400 hover:text-white">{mode === 'login' ? '没有账号？注册 NewAPI' : '已有账号？返回登录'}</button>
     </div>
   );

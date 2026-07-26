@@ -2,6 +2,7 @@ import modelCatalogConfig from '../config/modelCatalog.json' with { type: 'json'
 import type { ApiSettings, CustomProviderModelConfig, ModelSourceId, PromptLanguage } from '../types.ts';
 import { getSeedanceApiModelLabelForSourceId, normalizeSeedanceModelVersion } from '../features/seedance/modelVersions.ts';
 import { loadPersistedAppState, savePersistedAppState } from '../features/app/services/appStateStore.ts';
+import { BRAND } from '../config/brand.ts';
 
 export const API_SETTINGS_STATE_KEY = 'api_settings';
 
@@ -62,7 +63,7 @@ export const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.co
 export const DEFAULT_VOLCENGINE_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
 export const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
 export const DEFAULT_ALIYUN_BASE_URL = 'https://dashscope.aliyuncs.com/api/v1';
-export const DEFAULT_NEWAPI_BASE_URL = ((import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_NEWAPI_BASE_URL || 'https://api.huanxing.ai').replace(/\/+$/u, '');
+export const DEFAULT_NEWAPI_BASE_URL = ((import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_NEWAPI_BASE_URL || BRAND.serviceUrl).replace(/\/+$/u, '');
 
 const MODEL_PROVIDER_CATALOG = modelCatalogConfig.providers as Record<ModelProviderId, ProviderCatalog>;
 const PRICING_CATALOG_CONFIG = (modelCatalogConfig.pricingConfig || {}) as PricingCatalogConfig;
@@ -154,11 +155,12 @@ export const defaultApiSettings: ApiSettings = {
     baseUrl: DEFAULT_NEWAPI_BASE_URL,
     apiKey: '',
     user: null,
-    textModel: 'gpt-5.6-sol',
-    imageModel: 'gpt-image-2',
-    videoModel: 'doubao-seedance-2.0',
+    textModel: BRAND.textModel,
+    imageModel: BRAND.imageModel,
+    videoModel: BRAND.videoModel,
     tokens: [],
     selectedTokenId: null,
+    balance: null,
   },
   gemini: {
     apiKey: '',
@@ -176,9 +178,9 @@ export const defaultApiSettings: ApiSettings = {
     apiKey: '',
     baseUrl: `${DEFAULT_NEWAPI_BASE_URL}/v1`,
     promptLanguage: getProviderPromptLanguageCatalog('volcengine').default,
-    textModel: 'gpt-5.6-sol',
-    imageModel: VOLCENGINE_MODEL_CATALOG.image[0].endpointId,
-    videoModel: 'doubao-seedance-2.0',
+    textModel: BRAND.textModel,
+    imageModel: BRAND.imageModel,
+    videoModel: BRAND.videoModel,
     customModels: [],
   },
   openai: {
@@ -186,7 +188,7 @@ export const defaultApiSettings: ApiSettings = {
     apiKey: '',
     baseUrl: `${DEFAULT_NEWAPI_BASE_URL}/v1`,
     promptLanguage: getProviderPromptLanguageCatalog('openai').default,
-    imageModel: 'gpt-image-2',
+    imageModel: BRAND.imageModel,
     customModels: [],
   },
   aliyun: {
@@ -199,8 +201,8 @@ export const defaultApiSettings: ApiSettings = {
   },
   seedance: {
     enabled: true,
-    apiModel: 'doubao-seedance-2.0',
-    fastApiModel: 'doubao-seedance-2.0-fast',
+    apiModel: BRAND.videoModel,
+    fastApiModel: `${BRAND.videoModel}-fast`,
     defaultExecutor: 'ark',
     cliModelVersion: 'seedance2.0',
     pollIntervalSec: 15,
@@ -573,6 +575,7 @@ function normalizeApiSettings(settings: ApiSettings): ApiSettings {
     tokens: normalizedTokens,
     selectedTokenId: selectedToken?.id ?? selectedTokenId,
     user: settings.newapi?.user && typeof settings.newapi.user === 'object' ? settings.newapi.user : null,
+    balance: settings.newapi?.balance && typeof settings.newapi.balance === 'object' ? settings.newapi.balance : null,
   };
   const geminiLanguageCatalog = getProviderPromptLanguageCatalog('gemini');
   const volcengineLanguageCatalog = getProviderPromptLanguageCatalog('volcengine');

@@ -1,0 +1,12 @@
+{
+  "id": "frogclaw",
+  "appName": "FrogClaw",
+  "productName": "FrogClaw AI 导演工作台",
+  "identifier": "com.frogclaw.tapdance",
+  "serviceUrl": "https://frogclaw.com/",
+  "registerUrl": "https://frogclaw.com/sign-up",
+  "rechargeUrl": "https://frogclaw.com/wallet",
+  "textModel": "gpt-5.6-sol",
+  "imageModel": "gpt-image-2",
+  "videoModel": "doubao-seedance-2.0"
+}

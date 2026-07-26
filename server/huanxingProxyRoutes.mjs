@@ -111,6 +111,30 @@ export function registerHuanxingProxyRoutes(app) {
     }
   });
 
+  app.post('/api/seedance/newapi/balance', async (request, response) => {
+    try {
+      const baseUrl = normalizeBaseUrl(request.body?.baseUrl);
+      const session = sessions.get(baseUrl);
+      if (!session) throw new Error('尚未登录 NewAPI。');
+      const headers = { Cookie: session.cookie, 'New-Api-User': String(session.userId) };
+      const [self, status] = await Promise.all([
+        callUpstream(baseUrl, '/api/user/self', { headers }),
+        callUpstream(baseUrl, '/api/status', { headers }),
+      ]);
+      const user = self.payload?.data || {};
+      const serviceStatus = status.payload?.data || status.payload || {};
+      response.json({ success: true, data: {
+        quota: Number(user.quota || 0),
+        used_quota: Number(user.used_quota || 0),
+      }, status: {
+        quota_per_unit: Number(serviceStatus.quota_per_unit || 500000),
+        display_in_currency: serviceStatus.display_in_currency !== false,
+      } });
+    } catch (error) {
+      response.status(400).json({ success: false, message: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
   app.post('/api/seedance/newapi/logout', async (request, response) => {
     try {
       const baseUrl = normalizeBaseUrl(request.body?.baseUrl);

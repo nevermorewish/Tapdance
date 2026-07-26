@@ -138,6 +138,13 @@ export interface NewApiUser {
   usedQuota?: number;
 }
 
+export interface NewApiBalance {
+  quota: number;
+  usedQuota: number;
+  quotaPerUnit: number;
+  displayInCurrency: boolean;
+}
+
 export interface NewApiToken {
   id: number;
   name: string;
@@ -155,6 +162,7 @@ export interface NewApiConfig {
   videoModel: string;
   tokens: NewApiToken[];
   selectedTokenId: number | null;
+  balance?: NewApiBalance | null;
 }
 
 export interface SeedanceApiConfig {

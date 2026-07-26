@@ -1,4 +1,4 @@
-import type { NewApiConfig, NewApiToken, NewApiUser } from '../types.ts';
+import type { NewApiBalance, NewApiConfig, NewApiToken, NewApiUser } from '../types.ts';
 import { buildSeedanceBridgeRequestUrl } from './seedanceBridgeUrl.ts';
 
 export type NewApiAuthResult = { apiKey: string; user: NewApiUser; tokens: NewApiToken[]; selectedTokenId: number | null };
@@ -46,6 +46,20 @@ export async function registerNewApi(config: Pick<NewApiConfig, 'baseUrl'>, payl
   await request('/newapi/register', { baseUrl: config.baseUrl, ...payload });
 }
 
+export async function fetchNewApiBalance(config: Pick<NewApiConfig, 'baseUrl'>): Promise<NewApiBalance> {
+  const result = await request<{ data?: { quota?: number; used_quota?: number }; status?: { quota_per_unit?: number; display_in_currency?: boolean } }>('/newapi/balance', {
+    baseUrl: config.baseUrl,
+  });
+  const data = result.data || {};
+  const status = result.status || {};
+  return {
+    quota: Number(data.quota || 0),
+    usedQuota: Number(data.used_quota || 0),
+    quotaPerUnit: Number(status.quota_per_unit || 500000),
+    displayInCurrency: status.display_in_currency !== false,
+  };
+}
+
 export async function logoutNewApi(baseUrl: string) {
   await request('/newapi/logout', { baseUrl });
 }
@@ -55,6 +69,7 @@ export function applyNewApiAuth(settings: any, result: NewApiAuthResult) {
     ...settings.newapi,
     apiKey: result.apiKey,
     user: result.user,
+    balance: null,
     tokens: result.tokens || [],
     selectedTokenId: result.selectedTokenId ?? null,
   };
