@@ -30,7 +30,6 @@ import type { Project, ProjectType } from '../../types.ts';
 import { getProjectGroupImageAssets, type ProjectGroupSummary } from '../../services/projectGroups.ts';
 import { StudioMetricCard, StudioModal, StudioPage, StudioPageHeader, StudioPanel, StudioSelect, cx } from './StudioPrimitives.tsx';
 import { buildWorkspaceTelemetry, type WorkspaceTelemetryStats } from '../../features/app/utils/workspaceTelemetry.ts';
-import { BRAND } from '../../config/brand.ts';
 
 export type WorkspaceView =
   | 'home'
@@ -362,7 +361,7 @@ export function StudioSidebar({
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-[0.8rem] font-bold tracking-[0.35em] uppercase text-[var(--studio-accent-sky-text)]">
-                {BRAND.appName}
+                Tapdance
               </div>
               <div className="mt-1 text-2xl font-bold tracking-tight text-[var(--studio-text)]">
                 AI 导演工作台
@@ -483,7 +482,7 @@ export function AppChromeBar({ version }: AppChromeBarProps) {
   return (
     <header className="app-chrome shrink-0">
       <div className="app-chrome__title-wrap">
-        <span className="app-chrome__title">{BRAND.appName}</span>
+        <span className="app-chrome__title">Tapdance</span>
         <span className="app-chrome__version">{version}</span>
       </div>
     </header>

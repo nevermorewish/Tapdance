@@ -157,7 +157,7 @@ export const defaultApiSettings: ApiSettings = {
     user: null,
     textModel: BRAND.textModel,
     imageModel: BRAND.imageModel,
-    videoModel: BRAND.videoModel,
+    videoModel: BRAND.videoModel[0],
     tokens: [],
     selectedTokenId: null,
     balance: null,
@@ -180,7 +180,7 @@ export const defaultApiSettings: ApiSettings = {
     promptLanguage: getProviderPromptLanguageCatalog('volcengine').default,
     textModel: BRAND.textModel,
     imageModel: BRAND.imageModel,
-    videoModel: BRAND.videoModel,
+    videoModel: BRAND.videoModel[0],
     customModels: [],
   },
   openai: {
@@ -201,8 +201,8 @@ export const defaultApiSettings: ApiSettings = {
   },
   seedance: {
     enabled: true,
-    apiModel: BRAND.videoModel,
-    fastApiModel: `${BRAND.videoModel}-fast`,
+    apiModel: BRAND.videoModel[0],
+    fastApiModel: BRAND.videoModel[1] || `${BRAND.videoModel[0]}-fast`,
     defaultExecutor: 'ark',
     cliModelVersion: 'seedance2.0',
     pollIntervalSec: 15,
