@@ -1967,8 +1967,6 @@ export function FastVideoView({
                 >
                   <option value="ark">OpenAI 执行器（/v1/video/generations）</option>
                   <option value="volcengine">火山执行器（/api/v3）</option>
-                  <option value="cli">本地 CLI</option>
-                  <option value="aliyun">阿里云</option>
                 </StudioSelect>
               </label>
               {executionConfig.executor === 'ark' || executionConfig.executor === 'volcengine' ? (

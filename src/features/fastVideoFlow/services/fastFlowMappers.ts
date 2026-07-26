@@ -481,7 +481,7 @@ export function normalizeFastVideoProject(value?: NormalizableFastVideoProject |
   const input = (value?.input || {}) as Partial<FastVideoInput>;
   const task = (value?.task || {}) as Partial<SeedanceTask>;
   const legacyInput = (value?.input || {}) as Record<string, unknown>;
-  const executionExecutor = value?.executionConfig?.executor === 'cli' || value?.executionConfig?.executor === 'ark' || value?.executionConfig?.executor === 'aliyun' || value?.executionConfig?.executor === 'volcengine'
+  const executionExecutor = value?.executionConfig?.executor === 'ark' || value?.executionConfig?.executor === 'volcengine'
     ? value.executionConfig.executor
     : base.executionConfig.executor;
   const normalizedReferenceImages = normalizeReferenceImages(input.referenceImages, typeof legacyInput.referenceImageUrl === 'string' ? legacyInput.referenceImageUrl : '');
