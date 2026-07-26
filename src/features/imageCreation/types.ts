@@ -64,3 +64,6 @@ export type ImageCreationGroupOption = {
   id: string;
   name: string;
 };
+
+/** Synthetic picker value used by the image task list to show every group. */
+export const ALL_IMAGE_CREATION_GROUP_ID = '__all_image_creation_tasks__';

@@ -42,7 +42,7 @@ import { useImageCreationRecords } from './features/imageCreation/hooks/useImage
 import { generateOpenAIImages } from './services/openaiImageService.ts';
 import { saveMediaToAssetLibrary } from './services/assetLibrary.ts';
 import { collectImageCreationGeneratedImageAssets } from './features/imageCreation/utils/imageCreationAssets.ts';
-import type { ImageCreationDraft, ImageCreationGroupOption, ImageCreationRecord } from './features/imageCreation/types.ts';
+import { ALL_IMAGE_CREATION_GROUP_ID, type ImageCreationDraft, type ImageCreationGroupOption, type ImageCreationRecord } from './features/imageCreation/types.ts';
 import { resolveImageGenerationSize } from './features/imageCreation/utils/imageGenerationSizing.ts';
 import { ProjectDetailPageActions } from './features/app/components/ProjectDetailPageActions.tsx';
 import { ProjectOverviewWorkspace } from './features/app/components/ProjectOverviewWorkspace.tsx';
@@ -247,7 +247,7 @@ export default function App() {
   const [isGeneratingImageCreation, setIsGeneratingImageCreation] = useState(false);
   const activeImageGenerationCountRef = useRef(0);
   const [imageCreationError, setImageCreationError] = useState('');
-  const shouldComputeProjectGroups = view === 'home' || view === 'groupDetail' || view === 'imageCreation' || createProjectDraft !== null;
+  const shouldComputeProjectGroups = view === 'home' || view === 'groupDetail' || view === 'imageCreation' || view === 'imageTasks' || createProjectDraft !== null;
   const projectGroups = shouldComputeProjectGroups ? getProjectGroupSummary(projects) : EMPTY_PROJECT_GROUPS;
   const imageCreationImageAssets = collectImageCreationGeneratedImageAssets(imageCreationRecords);
   const projectMediaCounts = countProjectMediaItems(projects, imageCreationRecords);
@@ -915,7 +915,7 @@ export default function App() {
     }
   };
 
-  const handleNavigatePrimaryView = (targetView: 'home' | 'imageCreation' | 'assetLibrary' | 'portraitLibrary' | 'cliQueue') => {
+  const handleNavigatePrimaryView = (targetView: 'home' | 'imageCreation' | 'imageTasks' | 'assetLibrary' | 'portraitLibrary' | 'cliQueue') => {
     setSelectedGroupId(null);
 
     if (targetView === 'home') {
@@ -1017,8 +1017,11 @@ export default function App() {
   const imageCreationGroupOptionMap = new Map<string, ImageCreationGroupOption>();
   projectGroups.forEach((group) => imageCreationGroupOptionMap.set(group.id, { id: group.id, name: group.name }));
   imageCreationRecords.forEach((record) => imageCreationGroupOptionMap.set(record.groupId, { id: record.groupId, name: record.groupName }));
-  const imageCreationGroupOptions = Array.from(imageCreationGroupOptionMap.values())
-    .sort((left, right) => left.name.localeCompare(right.name, 'zh-Hans-CN'));
+  const imageCreationGroupOptions = [
+    { id: ALL_IMAGE_CREATION_GROUP_ID, name: '全部任务' },
+    ...Array.from(imageCreationGroupOptionMap.values())
+      .sort((left, right) => left.name.localeCompare(right.name, 'zh-Hans-CN')),
+  ];
   const imageCreationReferenceImages = [
     ...projects.flatMap((candidate) => collectProjectGeneratedImageAssets(candidate)),
     ...imageCreationImageAssets,
@@ -1034,7 +1037,9 @@ export default function App() {
       return;
     }
 
-    const selectedGroup = imageCreationGroupOptions.find((group) => group.id === draft.existingGroupId);
+    const selectedGroup = draft.existingGroupId === ALL_IMAGE_CREATION_GROUP_ID
+      ? undefined
+      : imageCreationGroupOptions.find((group) => group.id === draft.existingGroupId);
     const groupId = draft.groupMode === 'existing' && selectedGroup ? selectedGroup.id : crypto.randomUUID();
     const groupName = draft.groupMode === 'existing' && selectedGroup
       ? selectedGroup.name
@@ -1229,7 +1234,7 @@ export default function App() {
         updateGeminiRoleModel={updateGeminiRoleModel}
       />
     )
-    : view === 'imageCreation'
+    : view === 'imageCreation' || view === 'imageTasks'
       ? (
         <ImageCreationWorkspace
           records={imageCreationRecords}

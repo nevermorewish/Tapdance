@@ -34,6 +34,7 @@ import { buildWorkspaceTelemetry, type WorkspaceTelemetryStats } from '../../fea
 export type WorkspaceView =
   | 'home'
   | 'imageCreation'
+  | 'imageTasks'
   | 'assetLibrary'
   | 'portraitLibrary'
   | 'cliQueue'
@@ -196,6 +197,15 @@ export function getWorkspaceSurfaceMeta(view: WorkspaceView, project: Project): 
         chipClassName: 'studio-accent-chip-emerald',
         badgeLabel: 'Images',
       };
+    case 'imageTasks':
+      return {
+        eyebrow: 'Image Tasks',
+        title: '图片任务列表',
+        description: '查看所有历史图片生成任务和输出结果',
+        icon: ListOrdered,
+        chipClassName: 'studio-accent-chip-emerald',
+        badgeLabel: 'Tasks',
+      };
     case 'portraitLibrary':
       return {
         eyebrow: 'Library',
@@ -272,7 +282,7 @@ type StudioSidebarProps = {
   themeMode: WorkspaceThemeMode;
   queueCount: number;
   isMockModeEnabled?: boolean;
-  onNavigate: (view: 'home' | 'imageCreation' | 'assetLibrary' | 'portraitLibrary' | 'cliQueue') => void;
+  onNavigate: (view: 'home' | 'imageCreation' | 'imageTasks' | 'assetLibrary' | 'portraitLibrary' | 'cliQueue') => void;
   onThemeModeChange: (mode: WorkspaceThemeMode) => void;
   onOpenApiConfig: () => void;
 };
@@ -288,9 +298,11 @@ export function StudioSidebar({
   onThemeModeChange,
   onOpenApiConfig,
 }: StudioSidebarProps) {
-  const activePrimaryView: 'home' | 'imageCreation' | 'assetLibrary' | 'portraitLibrary' | 'cliQueue' =
+  const activePrimaryView: 'home' | 'imageCreation' | 'imageTasks' | 'assetLibrary' | 'portraitLibrary' | 'cliQueue' =
     view === 'imageCreation'
       ? 'imageCreation'
+      : view === 'imageTasks'
+        ? 'imageTasks'
       : view === 'assetLibrary'
       ? 'assetLibrary'
       : view === 'portraitLibrary'
@@ -299,7 +311,7 @@ export function StudioSidebar({
           ? 'cliQueue'
           : 'home';
   const primaryNavItems: Array<{
-    view: 'home' | 'imageCreation' | 'assetLibrary' | 'portraitLibrary' | 'cliQueue';
+    view: 'home' | 'imageCreation' | 'imageTasks' | 'assetLibrary' | 'portraitLibrary' | 'cliQueue';
     label: string;
     description: string;
     countLabel: string;
@@ -316,8 +328,15 @@ export function StudioSidebar({
         view: 'imageCreation',
         label: '图片制作',
         description: 'GPT Image 2 生图与参考图',
-        countLabel: 'NewAPI',
+        countLabel: '生成',
         icon: ImageIcon,
+      },
+      {
+        view: 'imageTasks',
+        label: '图片任务列表',
+        description: '查看历史图片任务和输出结果',
+        countLabel: `${mediaCount} 项`,
+        icon: ListOrdered,
       },
       {
         view: 'assetLibrary',

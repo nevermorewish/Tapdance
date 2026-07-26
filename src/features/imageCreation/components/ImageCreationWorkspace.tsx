@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2, Clock3, Image as ImageIcon, RefreshCw, Spa
 
 import { StudioModal, StudioPage, StudioPanel, StudioSelect, cx } from '../../../components/studio/StudioPrimitives.tsx';
 import type { ProjectGroupImageAsset } from '../../../services/projectGroups.ts';
-import type { ImageCreationDraft, ImageCreationGroupOption, ImageCreationRecord, ImageCreationReference } from '../types.ts';
+import { ALL_IMAGE_CREATION_GROUP_ID, type ImageCreationDraft, type ImageCreationGroupOption, type ImageCreationRecord, type ImageCreationReference } from '../types.ts';
 import {
   IMAGE_ASPECT_RATIO_OPTIONS,
   IMAGE_RESOLUTION_OPTIONS,
@@ -239,11 +239,15 @@ export function ImageCreationWorkspace({
   const selectedResolution = IMAGE_RESOLUTION_OPTIONS.find((item) => item.value === draft.resolution) || IMAGE_RESOLUTION_OPTIONS[0];
 
   const currentGroupRecords = records.filter((record) => (
-    selectedGroupId
+    selectedGroupId === ALL_IMAGE_CREATION_GROUP_ID
+      ? true
+      : selectedGroupId
       ? record.groupId === selectedGroupId || record.groupName === selectedGroupName
       : record.groupName === selectedGroupName
   ));
-  const currentPendingPersons = pendingPersons.filter((person) => person.groupName === selectedGroupName);
+  const currentPendingPersons = pendingPersons.filter((person) => (
+    selectedGroupId === ALL_IMAGE_CREATION_GROUP_ID || person.groupName === selectedGroupName
+  ));
   const taskItems = useMemo<ImageCreationTaskListItem[]>(() => {
     const pendingItems = currentPendingPersons.map((person) => ({
       id: person.id,
