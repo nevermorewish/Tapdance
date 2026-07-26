@@ -1,106 +1,127 @@
-name: Build Electron App
+name: Build and Upload Electron Packages
 
 on:
   push:
     tags:
-      - 'v*' # Trigger on version tags (e.g., v0.1.0)
-  workflow_dispatch: # Allow manual triggering
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to build (branch, tag, or SHA). Leave empty for the current ref.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
-permissions:
-  contents: write
+  TOS_BUCKET_URL: https://huanxing.tos-cn-beijing.volces.com
+  TOS_OBJECT_PREFIX: package
 
 jobs:
-  build:
-    name: Build on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+  package-windows:
+    name: Windows package (${{ matrix.brand }})
+    runs-on: windows-latest
     strategy:
+      fail-fast: false
+      max-parallel: 1
       matrix:
-        os: [macos-latest, windows-latest]
+        brand:
+          - huanxing
+          - fengchi
+          - frogclaw
 
     steps:
-      - name: Check out Git repository
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
 
-      - name: Install Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22 # Use LTS or current, better-sqlite3 supports >=18
-          cache: 'npm'
+          node-version: 22
+          cache: npm
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
         env:
           TAPDANCE_SKIP_POSTINSTALL_NATIVE_CHECK: '1'
 
-      - name: Verify Version Tag
+      - name: Verify version tag
+        if: startsWith(github.ref, 'refs/tags/v')
         run: npm run version:check-tag -- ${{ github.ref_name }}
 
       - name: Ensure Electron native dependencies
         run: node scripts/ensure-electron-native-modules.mjs
 
-      - name: Build & Package (Mac)
-        if: matrix.os == 'macos-latest'
-        run: npm run pack:mac
+      - name: Generate active brand configuration
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.MAC_CERTS }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          BRAND: ${{ matrix.brand }}
+        run: node scripts/generate-brand.mjs
 
-      - name: Build & Package (Windows)
-        if: matrix.os == 'windows-latest'
-        run: npm run pack:win
+      - name: Verify active brand and video models
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRAND: ${{ matrix.brand }}
+        shell: pwsh
+        run: |
+          $brand = Get-Content "brands/$env:BRAND.json" -Raw | ConvertFrom-Json
+          if ($brand.id -ne $env:BRAND) { throw "Brand id mismatch: $($brand.id)" }
+          if ($brand.videoModel.Count -ne 3) { throw "Expected exactly 3 video models for $env:BRAND" }
+          $active = Get-Content src/config/activeBrand.ts -Raw
+          if (!$active.Contains("$env:BRAND")) { throw "Active brand was not generated for $env:BRAND" }
+          Write-Host "Brand $env:BRAND uses video models: $($brand.videoModel -join ', ')"
 
-      - name: Upload Artifacts (Mac)
-        if: matrix.os == 'macos-latest'
+      - name: Build Windows installer
+        env:
+          BRAND: ${{ matrix.brand }}
+        run: npm run pack:win:single -- --config.directories.output=release/${{ matrix.brand }}
+
+      - name: Verify Windows artifacts
+        env:
+          BRAND: ${{ matrix.brand }}
+        shell: pwsh
+        run: |
+          $source = "release/$env:BRAND"
+          $installers = Get-ChildItem $source -Filter '*.exe' -File
+          if ($installers.Count -eq 0) { throw "No Windows installer found under $source" }
+          $installers | Get-FileHash -Algorithm SHA256 | Format-Table -AutoSize
+
+      - name: Upload package to Volcengine TOS
+        env:
+          BRAND: ${{ matrix.brand }}
+        shell: pwsh
+        run: |
+          $package = Get-Content package.json -Raw | ConvertFrom-Json
+          $version = [string]$package.version
+          $source = "release/$env:BRAND"
+          $prefix = "$env:TOS_OBJECT_PREFIX/$env:BRAND/v$version"
+          $files = Get-ChildItem $source -File | Where-Object { $_.Name -ne 'builder-debug.yml' }
+          if ($files.Count -eq 0) { throw "No package files found under $source" }
+
+          foreach ($file in $files) {
+            $objectUrl = "$env:TOS_BUCKET_URL/$prefix/$($file.Name)"
+            Write-Host "Uploading $($file.Name) -> $objectUrl"
+            & curl.exe --fail --show-error --silent --retry 3 --retry-all-errors `
+              -X PUT `
+              -H "Content-Type: application/octet-stream" `
+              --upload-file $file.FullName `
+              $objectUrl
+            if ($LASTEXITCODE -ne 0) { throw "TOS upload failed for $($file.Name)" }
+          }
+
+          Write-Host "Uploaded $env:BRAND package to $env:TOS_BUCKET_URL/$prefix/"
+
+      - name: Upload GitHub workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tapdance-mac-app
+          name: windows-package-${{ matrix.brand }}
           path: |
-            release/*.dmg
+            release/${{ matrix.brand }}/*.exe
+            release/${{ matrix.brand }}/*.blockmap
+            release/${{ matrix.brand }}/*.yml
+            !release/${{ matrix.brand }}/builder-debug.yml
+          if-no-files-found: error
           retention-days: 7
-
-      - name: Upload Artifacts (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: tapdance-windows-app
-          path: |
-            release/*.exe
-          retention-days: 7
-
-  release:
-    name: Create GitHub Release
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
-    steps:
-      - name: Download Mac Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: tapdance-mac-app
-          path: release-artifacts/mac
-
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: tapdance-windows-app
-          path: release-artifacts/windows
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Release ${{ github.ref_name }}
-          generate_release_notes: true
-          files: |
-            release-artifacts/mac/*
-            release-artifacts/windows/*
