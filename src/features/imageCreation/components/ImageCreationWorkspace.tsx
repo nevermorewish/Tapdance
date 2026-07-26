@@ -234,7 +234,7 @@ export function ImageCreationWorkspace({
     ? selectedGroup?.name || '未分组'
     : draft.newGroupName.trim() || '未分组';
   const selectedGroupId = draft.groupMode === 'existing' ? selectedGroup?.id || '' : '';
-  const canGenerate = Boolean(draft.prompt.trim()) && !isGenerating;
+  const canGenerate = Boolean(draft.prompt.trim());
 
   const selectedResolution = IMAGE_RESOLUTION_OPTIONS.find((item) => item.value === draft.resolution) || IMAGE_RESOLUTION_OPTIONS[0];
 
@@ -627,7 +627,6 @@ export function ImageCreationWorkspace({
             <button
               type="button"
               disabled={!canGenerate}
-              title={isGenerating ? '当前图片任务生成中，请等待完成后再提交下一批。' : undefined}
               onClick={() => void handleGenerate()}
               className="studio-button studio-button-primary shrink-0"
             >

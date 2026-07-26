@@ -245,6 +245,7 @@ export default function App() {
   });
   const { records: imageCreationRecords, setRecords: setImageCreationRecords } = useImageCreationRecords(isReinitializingAppDatabase);
   const [isGeneratingImageCreation, setIsGeneratingImageCreation] = useState(false);
+  const activeImageGenerationCountRef = useRef(0);
   const [imageCreationError, setImageCreationError] = useState('');
   const shouldComputeProjectGroups = view === 'home' || view === 'groupDetail' || view === 'imageCreation' || createProjectDraft !== null;
   const projectGroups = shouldComputeProjectGroups ? getProjectGroupSummary(projects) : EMPTY_PROJECT_GROUPS;
@@ -1027,10 +1028,6 @@ export default function App() {
     .sort((left, right) => `${left.projectName}${left.title}`.localeCompare(`${right.projectName}${right.title}`, 'zh-Hans-CN'));
 
   const handleGenerateImageCreation = async (draft: ImageCreationDraft) => {
-    if (isGeneratingImageCreation) {
-      return;
-    }
-
     const prompt = draft.prompt.trim();
     if (!prompt) {
       setImageCreationError('请先填写图片提示词。');
@@ -1047,6 +1044,7 @@ export default function App() {
     const model = apiSettings.openai.imageModel || 'gpt-image-2';
     const resolvedImageSize = resolveImageGenerationSize(draft.aspectRatio, draft.resolution, draft.customWidth, draft.customHeight);
 
+    activeImageGenerationCountRef.current += 1;
     setIsGeneratingImageCreation(true);
     setImageCreationError('');
 
@@ -1179,7 +1177,8 @@ export default function App() {
       setImageCreationError(error instanceof Error ? error.message : String(error));
       throw error;
     } finally {
-      setIsGeneratingImageCreation(false);
+      activeImageGenerationCountRef.current = Math.max(0, activeImageGenerationCountRef.current - 1);
+      setIsGeneratingImageCreation(activeImageGenerationCountRef.current > 0);
     }
   };
 

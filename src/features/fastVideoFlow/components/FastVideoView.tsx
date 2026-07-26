@@ -1525,8 +1525,7 @@ export function FastVideoView({
   const canSubmit = draftIssues.length === 0
     && videoPrompt.prompt.trim().length > 0
     && !isSubmitting
-    && !isCancellingTask
-    && !isTaskActive;
+    && !isCancellingTask;
   const creditText = typeof health?.credit?.total_credit === 'number' ? `${health.credit.total_credit}` : '未知';
   const hasSubmittedTask = Boolean(task.taskId || task.submitId);
   const canRefreshStatus = hasSubmittedTask && task.status !== 'submitting' && !isRefreshingStatus && !isCancellingTask;
@@ -1714,7 +1713,6 @@ export function FastVideoView({
               type="button"
               onClick={onSubmit}
               disabled={!canSubmit}
-              title={isTaskActive ? '当前视频任务正在排队或生成中，请等待完成或取消后再提交。' : undefined}
               className={`rounded-xl px-4 py-2 text-sm transition-colors ${canSubmit ? 'bg-sky-500 hover:bg-sky-400 text-zinc-950' : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'}`}
             >
               {generateActionBusy ? <span className="inline-flex items-center gap-2"><img src="./assets/loading.gif" alt="" className="w-4 h-4" />生成中</span> : <span className="inline-flex items-center gap-2"><Play className="w-4 h-4" />生成视频</span>}

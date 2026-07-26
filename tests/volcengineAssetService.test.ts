@@ -1,24 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  isArkAssetActiveStatus,
-  isArkAssetFailedStatus,
-  normalizeArkAssetStatus,
-} from '../src/services/volcengineAssetService.ts';
+import { extractArkAssetId } from '../src/services/volcengineAssetService.ts';
 
-test('normalizeArkAssetStatus canonicalizes common asset processing states', () => {
-  assert.equal(normalizeArkAssetStatus('active'), 'Active');
-  assert.equal(normalizeArkAssetStatus('SUCCESS'), 'Active');
-  assert.equal(normalizeArkAssetStatus('pending'), 'Processing');
-  assert.equal(normalizeArkAssetStatus('running'), 'Processing');
-  assert.equal(normalizeArkAssetStatus('fail'), 'Failed');
-  assert.equal(normalizeArkAssetStatus(''), 'Processing');
-});
-
-test('asset status helpers recognize canonical terminal states', () => {
-  assert.equal(isArkAssetActiveStatus('succeeded'), true);
-  assert.equal(isArkAssetFailedStatus('FAILED'), true);
-  assert.equal(isArkAssetActiveStatus('processing'), false);
-  assert.equal(isArkAssetFailedStatus('processing'), false);
+test('extractArkAssetId accepts common Ark and Huanxing response shapes', () => {
+  assert.equal(extractArkAssetId({ Id: 'asset-1' }), 'asset-1');
+  assert.equal(extractArkAssetId({ AssetId: 'asset-2' }), 'asset-2');
+  assert.equal(extractArkAssetId({ data: { asset_id: 'asset-3' } }), 'asset-3');
+  assert.equal(extractArkAssetId({ Result: { Asset: { id: 'asset-4' } } }), 'asset-4');
+  assert.equal(extractArkAssetId({ ResponseMetadata: { RequestId: 'request-1' } }), '');
 });

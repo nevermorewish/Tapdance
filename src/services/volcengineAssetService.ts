@@ -165,9 +165,45 @@ function normalizeAssetGroup(value: any): ArkAssetGroup | null {
   };
 }
 
+function getAssetRecordCandidates(value: any) {
+  const candidates: any[] = [];
+  const queue = [value];
+  const seen = new Set<any>();
+  const nestedFields = ['Asset', 'asset', 'AssetInfo', 'assetInfo', 'Data', 'data', 'Result', 'result', 'Item', 'item'];
+
+  while (queue.length > 0) {
+    const candidate = queue.shift();
+    if (!candidate || typeof candidate !== 'object' || seen.has(candidate)) {
+      continue;
+    }
+    seen.add(candidate);
+    candidates.push(candidate);
+    nestedFields.forEach((field) => {
+      if (candidate[field] && typeof candidate[field] === 'object') {
+        queue.push(candidate[field]);
+      }
+    });
+  }
+
+  return candidates;
+}
+
+export function extractArkAssetId(value: any) {
+  const idFields = ['Id', 'id', 'AssetId', 'assetId', 'asset_id', 'AssetID', 'assetID'];
+  for (const candidate of getAssetRecordCandidates(value)) {
+    for (const field of idFields) {
+      const id = String(candidate?.[field] || '').trim();
+      if (id) {
+        return id;
+      }
+    }
+  }
+  return '';
+}
+
 function normalizeAsset(value: any, fallbackId?: string, fallbackGroupId?: string, fallbackProjectName?: string): ArkAsset {
   return {
-    id: String(value?.Id || value?.id || fallbackId || '').trim(),
+    id: extractArkAssetId(value) || String(fallbackId || '').trim(),
     groupId: String(value?.GroupId || value?.groupId || fallbackGroupId || '').trim(),
     name: String(value?.Name || value?.name || '').trim(),
     assetType: String(value?.AssetType || value?.assetType || 'Image').trim() || 'Image',
@@ -328,7 +364,7 @@ export async function createArkAsset(params: {
     AssetType: 'Image',
     ProjectName: projectName,
   }, params.baseUrl);
-  const assetId = String(result?.Id || result?.id || '').trim();
+  const assetId = extractArkAssetId(result);
 
   if (!assetId) {
     throw new Error('Ark CreateAsset 未返回 Asset ID。');
