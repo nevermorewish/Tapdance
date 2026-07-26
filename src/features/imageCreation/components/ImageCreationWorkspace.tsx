@@ -359,12 +359,6 @@ export function ImageCreationWorkspace({
       status: 'generating',
       draft: snapshot,
     }, ...current]);
-    setDraft((current) => ({
-      ...current,
-      title: '',
-      prompt: '',
-      references: [],
-    }));
 
     try {
       await onGenerate(snapshot);
@@ -631,7 +625,7 @@ export function ImageCreationWorkspace({
               className="studio-button studio-button-primary shrink-0"
             >
               {isGenerating ? <img src="./assets/loading.gif" alt="" className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-              {isGenerating ? '生成中' : '生成图片'}
+              {isGenerating ? '继续生成' : '生成图片'}
             </button>
           </StudioPanel>
 
