@@ -1238,7 +1238,6 @@ export default function App() {
           records={imageCreationRecords}
           groupOptions={imageCreationGroupOptions}
           availableReferenceImages={imageCreationReferenceImages}
-          usdToCnyRate={usdToCnyRate}
           isGenerating={isGeneratingImageCreation}
           error={imageCreationError}
           onGenerate={handleGenerateImageCreation}

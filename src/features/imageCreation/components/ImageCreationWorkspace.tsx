@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { AlertTriangle, CheckCircle2, Clock3, DollarSign, Image as ImageIcon, RefreshCw, Sparkles, Upload, Users, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock3, Image as ImageIcon, RefreshCw, Sparkles, Upload, Users, X } from 'lucide-react';
 
 import { StudioModal, StudioPage, StudioPanel, StudioSelect, cx } from '../../../components/studio/StudioPrimitives.tsx';
 import type { ProjectGroupImageAsset } from '../../../services/projectGroups.ts';
@@ -15,14 +15,12 @@ import { PortraitLibraryView } from '../../portraitLibrary/components/PortraitLi
 import {
   OPENAI_IMAGE_OUTPUT_FORMAT_OPTIONS,
   OPENAI_IMAGE_QUALITY_OPTIONS,
-  estimateOpenAIImageCost,
 } from '../utils/openaiImagePricing.ts';
 
 type ImageCreationWorkspaceProps = {
   records: ImageCreationRecord[];
   groupOptions: ImageCreationGroupOption[];
   availableReferenceImages: ProjectGroupImageAsset[];
-  usdToCnyRate: number;
   isGenerating: boolean;
   error: string;
   onGenerate: (draft: ImageCreationDraft) => void | Promise<unknown>;
@@ -202,7 +200,6 @@ export function ImageCreationWorkspace({
   records,
   groupOptions,
   availableReferenceImages,
-  usdToCnyRate,
   isGenerating,
   error,
   onGenerate,
@@ -229,16 +226,6 @@ export function ImageCreationWorkspace({
       };
     });
   }, [groupOptions]);
-
-  const costEstimate = useMemo(() => estimateOpenAIImageCost({
-    prompt: draft.prompt,
-    size: draft.size,
-    quality: draft.quality,
-    n: draft.n,
-    referenceCount: draft.references.length,
-    usdToCnyRate,
-    outputFormat: draft.outputFormat,
-  }), [draft.n, draft.outputFormat, draft.prompt, draft.quality, draft.references.length, draft.size, usdToCnyRate]);
 
   const selectedGroup = draft.groupMode === 'existing'
     ? groupOptions.find((group) => group.id === draft.existingGroupId)
@@ -468,7 +455,7 @@ export function ImageCreationWorkspace({
             />
           </label>
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(8rem,1fr)_minmax(8rem,1fr)_minmax(8rem,1fr)_minmax(6rem,0.72fr)_minmax(6rem,0.72fr)_minmax(6rem,0.72fr)]">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <label className="min-w-0">
               <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--studio-dim)]">高宽比</span>
               <StudioSelect
@@ -531,6 +518,9 @@ export function ImageCreationWorkspace({
               </div>
             )}
 
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <label className="min-w-0">
               <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--studio-dim)]">质量</span>
               <StudioSelect
@@ -616,16 +606,7 @@ export function ImageCreationWorkspace({
             )}
           </div>
 
-          <StudioPanel className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between" tone="soft">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-200">
-                <DollarSign className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-base font-semibold text-[var(--studio-text)]">{costEstimate.summary}</div>
-                <div className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--studio-muted)]">{costEstimate.detail}</div>
-              </div>
-            </div>
+          <StudioPanel className="flex justify-end p-4" tone="soft">
             <button
               type="button"
               disabled={!canGenerate}
