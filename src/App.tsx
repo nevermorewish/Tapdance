@@ -43,6 +43,7 @@ import { generateOpenAIImages } from './services/openaiImageService.ts';
 import { saveMediaToAssetLibrary } from './services/assetLibrary.ts';
 import { collectImageCreationGeneratedImageAssets } from './features/imageCreation/utils/imageCreationAssets.ts';
 import type { ImageCreationDraft, ImageCreationGroupOption, ImageCreationRecord } from './features/imageCreation/types.ts';
+import { resolveImageGenerationSize } from './features/imageCreation/utils/imageGenerationSizing.ts';
 import { ProjectDetailPageActions } from './features/app/components/ProjectDetailPageActions.tsx';
 import { ProjectOverviewWorkspace } from './features/app/components/ProjectOverviewWorkspace.tsx';
 import { useModelInvocationLogs } from './features/app/hooks/useModelInvocationLogs.ts';
@@ -1046,6 +1047,7 @@ export default function App() {
     const recordId = crypto.randomUUID();
     const title = draft.title.trim() || prompt.replace(/\s+/gu, ' ').trim().slice(0, 24) || '图片制作';
     const model = apiSettings.openai.imageModel || 'gpt-image-2';
+    const resolvedImageSize = resolveImageGenerationSize(draft.aspectRatio, draft.resolution, draft.customWidth, draft.customHeight);
 
     setIsGeneratingImageCreation(true);
     setImageCreationError('');
@@ -1054,7 +1056,11 @@ export default function App() {
       const openAIRequest = {
         model,
         prompt,
-        size: draft.size,
+        aspectRatio: draft.aspectRatio,
+        resolution: draft.resolution,
+        customWidth: draft.customWidth,
+        customHeight: draft.customHeight,
+        size: resolvedImageSize,
         quality: draft.quality,
         outputFormat: draft.outputFormat,
         outputCompression: draft.outputFormat === 'jpeg' || draft.outputFormat === 'webp' ? draft.outputCompression : undefined,
@@ -1072,7 +1078,9 @@ export default function App() {
         result = await generateOpenAIImages({
           prompt,
           modelName: model,
-          size: draft.size,
+          aspectRatio: draft.aspectRatio,
+          resolution: draft.resolution,
+          size: resolvedImageSize,
           quality: draft.quality,
           outputFormat: draft.outputFormat,
           outputCompression: draft.outputCompression,
@@ -1148,7 +1156,11 @@ export default function App() {
         model,
         createdAt,
         request: {
-          size: draft.size,
+          aspectRatio: draft.aspectRatio,
+          resolution: draft.resolution,
+          customWidth: draft.customWidth,
+          customHeight: draft.customHeight,
+          size: resolvedImageSize,
           quality: draft.quality,
           outputFormat: draft.outputFormat,
           outputCompression: draft.outputFormat === 'jpeg' || draft.outputFormat === 'webp' ? draft.outputCompression : undefined,

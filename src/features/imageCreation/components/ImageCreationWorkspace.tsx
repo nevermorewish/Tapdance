@@ -4,11 +4,17 @@ import { AlertTriangle, CheckCircle2, Clock3, DollarSign, Image as ImageIcon, Re
 import { StudioModal, StudioPage, StudioPanel, StudioSelect, cx } from '../../../components/studio/StudioPrimitives.tsx';
 import type { ProjectGroupImageAsset } from '../../../services/projectGroups.ts';
 import type { ImageCreationDraft, ImageCreationGroupOption, ImageCreationRecord, ImageCreationReference } from '../types.ts';
+import {
+  IMAGE_ASPECT_RATIO_OPTIONS,
+  IMAGE_RESOLUTION_OPTIONS,
+  resolveImageGenerationSize,
+  type ImageAspectRatio,
+  type ImageResolution,
+} from '../utils/imageGenerationSizing.ts';
 import { PortraitLibraryView } from '../../portraitLibrary/components/PortraitLibraryView.tsx';
 import {
   OPENAI_IMAGE_OUTPUT_FORMAT_OPTIONS,
   OPENAI_IMAGE_QUALITY_OPTIONS,
-  OPENAI_IMAGE_SIZE_OPTIONS,
   estimateOpenAIImageCost,
 } from '../utils/openaiImagePricing.ts';
 
@@ -42,6 +48,10 @@ type ImageCreationTaskListItem = {
   outputs: Array<{ id: string; title: string; url: string }>;
   references: ImageCreationReference[];
   request: {
+    aspectRatio: ImageCreationDraft['aspectRatio'];
+    resolution: ImageCreationDraft['resolution'];
+    customWidth?: string;
+    customHeight?: string;
     size: string;
     quality: ImageCreationDraft['quality'];
     outputFormat: ImageCreationDraft['outputFormat'];
@@ -71,6 +81,10 @@ function createDefaultDraft(groupOptions: ImageCreationGroupOption[]): ImageCrea
     existingGroupId: firstGroup?.id || '',
     newGroupName: buildDefaultGroupName(groupOptions),
     prompt: '',
+    aspectRatio: '1:1',
+    resolution: '1K',
+    customWidth: '',
+    customHeight: '',
     size: '1024x1024',
     quality: 'medium',
     outputFormat: 'png',
@@ -146,6 +160,17 @@ function getTimestamp(value: string) {
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
+function updateImageSizingDraft(
+  current: ImageCreationDraft,
+  patch: Partial<Pick<ImageCreationDraft, 'aspectRatio' | 'resolution' | 'customWidth' | 'customHeight'>>,
+) {
+  const next = { ...current, ...patch };
+  return {
+    ...next,
+    size: resolveImageGenerationSize(next.aspectRatio, next.resolution, next.customWidth, next.customHeight),
+  };
+}
+
 function buildDraftFromRecord(record: ImageCreationRecord, groupOptions: ImageCreationGroupOption[]): ImageCreationDraft {
   const matchingGroup = groupOptions.find((group) => group.id === record.groupId || group.name === record.groupName);
   return {
@@ -154,6 +179,10 @@ function buildDraftFromRecord(record: ImageCreationRecord, groupOptions: ImageCr
     existingGroupId: matchingGroup?.id || '',
     newGroupName: matchingGroup ? buildDefaultGroupName(groupOptions) : record.groupName || buildDefaultGroupName(groupOptions),
     prompt: record.prompt,
+    aspectRatio: record.request.aspectRatio || '1:1',
+    resolution: record.request.resolution || '1K',
+    customWidth: record.request.customWidth || '',
+    customHeight: record.request.customHeight || '',
     size: record.request.size,
     quality: record.request.quality,
     outputFormat: record.request.outputFormat,
@@ -220,6 +249,8 @@ export function ImageCreationWorkspace({
   const selectedGroupId = draft.groupMode === 'existing' ? selectedGroup?.id || '' : '';
   const canGenerate = Boolean(draft.prompt.trim()) && !isGenerating;
 
+  const selectedResolution = IMAGE_RESOLUTION_OPTIONS.find((item) => item.value === draft.resolution) || IMAGE_RESOLUTION_OPTIONS[0];
+
   const currentGroupRecords = records.filter((record) => (
     selectedGroupId
       ? record.groupId === selectedGroupId || record.groupName === selectedGroupName
@@ -236,6 +267,10 @@ export function ImageCreationWorkspace({
       outputs: [],
       references: person.draft.references,
       request: {
+        aspectRatio: person.draft.aspectRatio,
+        resolution: person.draft.resolution,
+        customWidth: person.draft.customWidth,
+        customHeight: person.draft.customHeight,
         size: person.draft.size,
         quality: person.draft.quality,
         outputFormat: person.draft.outputFormat,
@@ -264,6 +299,10 @@ export function ImageCreationWorkspace({
         })),
         references: retryDraft.references,
         request: {
+          aspectRatio: record.request.aspectRatio || '1:1',
+          resolution: record.request.resolution || '1K',
+          customWidth: record.request.customWidth,
+          customHeight: record.request.customHeight,
           size: record.request.size,
           quality: record.request.quality,
           outputFormat: record.request.outputFormat,
@@ -429,21 +468,68 @@ export function ImageCreationWorkspace({
             />
           </label>
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(7rem,0.9fr)_minmax(6rem,0.72fr)_minmax(5.5rem,0.65fr)_minmax(6rem,0.72fr)]">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(8rem,1fr)_minmax(8rem,1fr)_minmax(8rem,1fr)_minmax(6rem,0.72fr)_minmax(6rem,0.72fr)_minmax(6rem,0.72fr)]">
             <label className="min-w-0">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--studio-dim)]">尺寸</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--studio-dim)]">高宽比</span>
               <StudioSelect
-                value={draft.size}
-                onChange={(event) => setDraft((current) => ({ ...current, size: event.target.value }))}
+                value={draft.aspectRatio}
+                onChange={(event) => setDraft((current) => updateImageSizingDraft(current, { aspectRatio: event.target.value as ImageAspectRatio }))}
                 className="studio-select mt-2 h-11"
               >
-                {OPENAI_IMAGE_SIZE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}{option.experimental ? ' / 实验' : ''}
-                  </option>
+                {IMAGE_ASPECT_RATIO_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </StudioSelect>
             </label>
+
+            <label className="min-w-0">
+              <span title={selectedResolution.hint} className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--studio-dim)]">分辨率</span>
+              <StudioSelect
+                value={draft.resolution}
+                onChange={(event) => setDraft((current) => updateImageSizingDraft(current, { resolution: event.target.value as ImageResolution }))}
+                className="studio-select mt-2 h-11"
+              >
+                {IMAGE_RESOLUTION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </StudioSelect>
+            </label>
+
+            {draft.resolution === 'custom' ? (
+              <>
+                <label className="min-w-0">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--studio-dim)]">自定义宽度</span>
+                  <input
+                    type="number"
+                    min={64}
+                    max={3840}
+                    step={8}
+                    value={draft.customWidth}
+                    placeholder="3840"
+                    onChange={(event) => setDraft((current) => updateImageSizingDraft(current, { customWidth: event.target.value.replace(/\D/gu, '').slice(0, 4) }))}
+                    className="studio-input mt-2 h-11"
+                  />
+                </label>
+                <label className="min-w-0">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--studio-dim)]">自定义高度</span>
+                  <input
+                    type="number"
+                    min={64}
+                    max={3840}
+                    step={8}
+                    value={draft.customHeight}
+                    placeholder="2160"
+                    onChange={(event) => setDraft((current) => updateImageSizingDraft(current, { customHeight: event.target.value.replace(/\D/gu, '').slice(0, 4) }))}
+                    className="studio-input mt-2 h-11"
+                  />
+                </label>
+              </>
+            ) : (
+              <div className="min-w-0 rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-soft)] px-3 py-2.5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--studio-dim)]">请求尺寸</span>
+                <div className="mt-2 truncate text-sm text-[var(--studio-text)]">{draft.size}</div>
+              </div>
+            )}
 
             <label className="min-w-0">
               <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--studio-dim)]">质量</span>
@@ -730,6 +816,8 @@ export function ImageCreationWorkspace({
                   <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--studio-dim)]">参数</div>
                   <div className="mt-3 divide-y divide-[var(--studio-border)] overflow-hidden rounded-[1rem] border border-[var(--studio-border)] bg-[var(--studio-field)] text-sm">
                     {[
+                      ['高宽比', detailTask.request.aspectRatio],
+                      ['分辨率', detailTask.request.resolution],
                       ['尺寸', detailTask.request.size],
                       ['质量', detailTask.request.quality],
                       ['格式', detailTask.request.outputFormat],

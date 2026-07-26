@@ -1,4 +1,5 @@
 import type { ApiSettings, Asset, VisualAspectRatio } from '../types.ts';
+import type { ImageAspectRatio, ImageResolution } from '../features/imageCreation/utils/imageGenerationSizing.ts';
 import { loadApiSettings, resolveOpenAIBaseUrl } from './apiConfig.ts';
 import { buildSeedanceBridgeRequestUrl } from './seedanceBridgeUrl.ts';
 
@@ -14,6 +15,8 @@ export type OpenAIImageGenerationReference = {
 export type OpenAIImageGenerationRequest = {
   prompt: string;
   modelName?: string;
+  aspectRatio?: ImageAspectRatio;
+  resolution?: ImageResolution;
   size?: string;
   quality?: OpenAIImageQuality;
   outputFormat?: OpenAIImageOutputFormat;
@@ -57,6 +60,10 @@ const OPENAI_ASPECT_RATIO_SIZE_VALUES = [
   '1:2',
   '21:9',
   '9:21',
+  '4:1',
+  '1:4',
+  '8:1',
+  '1:8',
 ] as const;
 
 function getGreatestCommonDivisor(first: number, second: number): number {
@@ -421,6 +428,8 @@ export function assetReferencesToOpenAIReferences(referenceAssets: Asset[] = [],
 export async function generateOpenAIImages({
   prompt,
   modelName,
+  aspectRatio,
+  resolution,
   size = 'auto',
   quality = 'auto',
   outputFormat = 'png',
@@ -453,6 +462,8 @@ export async function generateOpenAIImages({
     prompt: normalizedPrompt,
     n: normalizeCount(n),
     size,
+    ...(aspectRatio ? { aspect_ratio: aspectRatio } : {}),
+    ...(resolution ? { resolution } : {}),
     quality,
     output_format: outputFormat,
     moderation,

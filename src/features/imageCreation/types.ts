@@ -1,4 +1,5 @@
 import type { OpenAIImageOutputFormat, OpenAIImageQuality, OpenAIImageModeration } from '../../services/openaiImageService.ts';
+import type { ImageAspectRatio, ImageResolution } from './utils/imageGenerationSizing.ts';
 
 export type ImageCreationReference = {
   id: string;
@@ -25,6 +26,10 @@ export type ImageCreationRecord = {
   model: string;
   createdAt: string;
   request: {
+    aspectRatio?: ImageAspectRatio;
+    resolution?: ImageResolution;
+    customWidth?: string;
+    customHeight?: string;
     size: string;
     quality: OpenAIImageQuality;
     outputFormat: OpenAIImageOutputFormat;
@@ -42,6 +47,10 @@ export type ImageCreationDraft = {
   existingGroupId: string;
   newGroupName: string;
   prompt: string;
+  aspectRatio: ImageAspectRatio;
+  resolution: ImageResolution;
+  customWidth: string;
+  customHeight: string;
   size: string;
   quality: OpenAIImageQuality;
   outputFormat: OpenAIImageOutputFormat;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { loadPersistedAppState, savePersistedAppState } from '../../app/services/appStateStore.ts';
 import type { ImageCreationRecord } from '../types.ts';
+import { inferImageAspectRatioFromSize, type ImageResolution } from '../utils/imageGenerationSizing.ts';
 
 const IMAGE_CREATION_RECORDS_STATE_KEY = 'image_creation_records';
 const IMAGE_CREATION_RECORDS_PERSIST_DELAY_MS = 500;
@@ -23,6 +24,10 @@ function normalizeImageCreationRecord(value: Partial<ImageCreationRecord>): Imag
     model: typeof value.model === 'string' && value.model.trim() ? value.model.trim() : 'gpt-image-2',
     createdAt: typeof value.createdAt === 'string' && value.createdAt.trim() ? value.createdAt.trim() : new Date().toISOString(),
     request: {
+      aspectRatio: value.request?.aspectRatio || inferImageAspectRatioFromSize(typeof value.request?.size === 'string' ? value.request.size : ''),
+      resolution: value.request?.resolution === '2K' || value.request?.resolution === '4K' || value.request?.resolution === 'custom' ? value.request.resolution as ImageResolution : '1K',
+      customWidth: typeof value.request?.customWidth === 'string' ? value.request.customWidth.trim() : '',
+      customHeight: typeof value.request?.customHeight === 'string' ? value.request.customHeight.trim() : '',
       size: typeof value.request?.size === 'string' && value.request.size.trim() ? value.request.size.trim() : 'auto',
       quality: value.request?.quality === 'low' || value.request?.quality === 'medium' || value.request?.quality === 'high' ? value.request.quality : 'auto',
       outputFormat: value.request?.outputFormat === 'jpeg' || value.request?.outputFormat === 'webp' ? value.request.outputFormat : 'png',

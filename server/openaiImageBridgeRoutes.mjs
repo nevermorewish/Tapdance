@@ -25,6 +25,10 @@ const openAIAspectRatioSizeValues = [
   '1:2',
   '21:9',
   '9:21',
+  '4:1',
+  '1:4',
+  '8:1',
+  '1:8',
 ];
 
 function sleep(ms) {
@@ -169,7 +173,7 @@ function normalizeOpenAIJsonRequest(body) {
     prompt,
   };
 
-  const optionalStringFields = ['size', 'quality', 'output_format', 'background', 'moderation'];
+  const optionalStringFields = ['size', 'quality', 'output_format', 'background', 'moderation', 'aspect_ratio', 'resolution'];
   for (const field of optionalStringFields) {
     const value = String(request[field] || '').trim();
     if (value) {
@@ -210,6 +214,8 @@ function summarizeOpenAIImageRequest(path, imageRequest, referenceCount, attempt
     path,
     model: imageRequest?.model,
     size: imageRequest?.size,
+    aspect_ratio: imageRequest?.aspect_ratio,
+    resolution: imageRequest?.resolution,
     quality: imageRequest?.quality,
     output_format: imageRequest?.output_format,
     moderation: imageRequest?.moderation,
@@ -364,6 +370,8 @@ async function requestHuanxingImageTask(config, imageRequest, references = [], n
     model: imageRequest.model || 'gpt-image-2',
     prompt: imageRequest.prompt,
     ...(imageRequest.size ? { size: imageRequest.size } : {}),
+    ...(imageRequest.aspect_ratio ? { aspect_ratio: imageRequest.aspect_ratio } : {}),
+    ...(imageRequest.resolution ? { resolution: imageRequest.resolution } : {}),
     ...(imageRequest.quality ? { quality: imageRequest.quality } : {}),
     ...(imageRequest.output_format ? { output_format: imageRequest.output_format } : {}),
     ...(imageRequest.output_compression !== undefined ? { output_compression: imageRequest.output_compression } : {}),

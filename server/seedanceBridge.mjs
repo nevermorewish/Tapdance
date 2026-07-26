@@ -45,6 +45,10 @@ const openAIAspectRatioSizeValues = [
   '1:2',
   '21:9',
   '9:21',
+  '4:1',
+  '1:4',
+  '8:1',
+  '1:8',
 ];
 
 app.use(express.json({ limit: '100mb' }));
@@ -397,7 +401,7 @@ function normalizeOpenAIJsonRequest(body) {
     prompt,
   };
 
-  const optionalStringFields = ['size', 'quality', 'output_format', 'background', 'moderation'];
+  const optionalStringFields = ['size', 'quality', 'output_format', 'background', 'moderation', 'aspect_ratio', 'resolution'];
   for (const field of optionalStringFields) {
     const value = String(request[field] || '').trim();
     if (value) {
@@ -438,6 +442,8 @@ function summarizeOpenAIImageRequest(path, imageRequest, referenceCount, attempt
     path,
     model: imageRequest?.model,
     size: imageRequest?.size,
+    aspect_ratio: imageRequest?.aspect_ratio,
+    resolution: imageRequest?.resolution,
     quality: imageRequest?.quality,
     output_format: imageRequest?.output_format,
     moderation: imageRequest?.moderation,
