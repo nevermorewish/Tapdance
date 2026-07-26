@@ -520,7 +520,7 @@ export function ImageCreationWorkspace({
 
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <label className="min-w-0">
               <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--studio-dim)]">质量</span>
               <StudioSelect
@@ -556,6 +556,23 @@ export function ImageCreationWorkspace({
               >
                 <option value="auto">Auto</option>
                 <option value="low">Low</option>
+              </StudioSelect>
+            </label>
+
+            <label className="min-w-0">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--studio-dim)]">生成张数</span>
+              <StudioSelect
+                value={String(draft.n)}
+                onChange={(event) => setDraft((current) => ({
+                  ...current,
+                  n: Math.max(1, Math.min(4, Number(event.target.value) || 1)),
+                }))}
+                className="studio-select mt-2 h-11"
+              >
+                <option value="1">1 张</option>
+                <option value="2">2 张</option>
+                <option value="3">3 张</option>
+                <option value="4">4 张</option>
               </StudioSelect>
             </label>
           </div>
@@ -610,6 +627,7 @@ export function ImageCreationWorkspace({
             <button
               type="button"
               disabled={!canGenerate}
+              title={isGenerating ? '当前图片任务生成中，请等待完成后再提交下一批。' : undefined}
               onClick={() => void handleGenerate()}
               className="studio-button studio-button-primary shrink-0"
             >
