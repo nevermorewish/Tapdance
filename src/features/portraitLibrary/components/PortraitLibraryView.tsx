@@ -1922,7 +1922,10 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
       return browserFileUrl;
     }
 
-    if (portraitConfig?.configured) {
+    // Electron packages do not contain the optional public/portraits directory.
+    // Always route /portraits assets through the local bridge first so a configured
+    // portrait folder works immediately, even while the config request is loading.
+    if (isElectron || portraitConfig?.configured) {
       return buildPortraitLibraryFileUrl(relativePath);
     }
 
