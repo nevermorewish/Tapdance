@@ -2,7 +2,7 @@ import type { Asset, AspectRatio, Brief, Shot, VisualAspectRatio } from '../type
 import type { FastVideoInput, FastVideoPlan } from '../features/fastVideoFlow/types/fastTypes.ts';
 import { createFallbackFastVideoPlan } from '../features/fastVideoFlow/services/fastFlowMappers.ts';
 import { buildFastVideoPlanPrompt, buildFastVideoPromptRegenerationPrompt, normalizeFastVideoExecutionPrompt } from '../features/fastVideoFlow/services/fastPromptBuilders.ts';
-import { loadApiSettings, resolveVolcengineBaseUrl } from './apiConfig.ts';
+import { loadApiSettings } from './apiConfig.ts';
 import { buildCharacterReferencePrompt, buildProductReferencePrompt, buildSceneReferencePrompt } from './assetPromptTemplate.ts';
 import { getMockVideoUrl } from './mockMedia.ts';
 import { enforceFramePromptAspectRatio, inferAspectRatioFromFramePrompts } from './promptAspectRatio.ts';
@@ -19,22 +19,35 @@ function getVolcengineConfig() {
   return loadApiSettings().volcengine;
 }
 
-function getBaseUrl() {
-  return resolveVolcengineBaseUrl(getVolcengineConfig().baseUrl).replace(/\/$/, '');
+function getBaseUrl(path: string) {
+  const settings = loadApiSettings();
+  if (settings.mockApi.enabled && settings.volcengine.baseUrl) {
+    return settings.volcengine.baseUrl.replace(/\/$/u, '');
+  }
+  const root = settings.newapi.baseUrl.replace(/\/$/u, '');
+  return `${root}${path.startsWith('/contents') ? '/api/v3' : '/v1'}`;
 }
 
 function getHeaders() {
   const config = getVolcengineConfig();
-  const apiKey = config.apiKey.trim();
+  const apiKey = loadApiSettings().newapi.apiKey.trim() || config.apiKey.trim();
 
   if (!apiKey) {
-    throw new Error('未配置火山引擎 API Key。');
+    throw new Error('NewAPI 未登录，请先登录 NewAPI。');
   }
 
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${apiKey}`,
   };
+}
+
+function resolveHuanxingVideoModel(modelName: string): string {
+  const normalized = modelName.trim().toLowerCase();
+  if (!normalized || normalized === 'seedance') return 'doubao-seedance-2.0';
+  if (normalized === 'seedance-fast' || normalized === 'seedance2.0fast') return 'doubao-seedance-2.0-fast';
+  if (normalized === 'seedance-mini' || normalized === 'seedance2.0mini') return 'doubao-seedance-2.0-mini';
+  return modelName.trim();
 }
 
 function getBriefStyleContext(brief: Brief) {
@@ -45,7 +58,7 @@ function getBriefStyleContext(brief: Brief) {
 }
 
 async function requestJson(path: string, init: RequestInit) {
-  const response = await fetch(`${getBaseUrl()}${path}`, {
+  const response = await fetch(`${getBaseUrl(path)}${path}`, {
     ...init,
     headers: {
       ...getHeaders(),
@@ -585,14 +598,12 @@ export async function startVideoGeneration(shot: Shot, defaultAspectRatio: Aspec
   const payload = await requestJson('/contents/generations/tasks', {
     method: 'POST',
     body: JSON.stringify({
-      model: modelName,
+      model: resolveHuanxingVideoModel(modelName),
       content: buildVideoContent(`${prompt}${referenceHint}`, firstFrameUrl, lastFrameUrl),
-      parameters: {
-        resolution: effectiveResolution,
-        aspect_ratio: videoConfig.useReferenceAssets ? '16:9' : normalizeVideoAspectRatio(videoConfig.aspectRatio),
-        duration: Math.max(1, Math.round(shot.duration)),
-        fps: videoConfig.frameRate || 24,
-      },
+      resolution: effectiveResolution,
+      ratio: videoConfig.useReferenceAssets ? '16:9' : normalizeVideoAspectRatio(videoConfig.aspectRatio),
+      duration: Math.max(1, Math.round(shot.duration)),
+      generate_audio: Boolean(videoConfig.generateAudio),
     }),
   });
 
@@ -620,14 +631,11 @@ export async function startTransitionVideoGeneration(firstFrameUrl: string, last
   const payload = await requestJson('/contents/generations/tasks', {
     method: 'POST',
     body: JSON.stringify({
-      model: modelName,
+      model: resolveHuanxingVideoModel(modelName),
       content: buildVideoContent(prompt, normalizedFirstFrameUrl, normalizedLastFrameUrl),
-      parameters: {
-        resolution: '720p',
-        aspect_ratio: normalizeVideoAspectRatio(aspectRatio),
-        duration: Math.max(4, Math.round(durationSeconds || 4)),
-        fps: 24,
-      },
+      resolution: '720p',
+      ratio: normalizeVideoAspectRatio(aspectRatio),
+      duration: Math.max(4, Math.round(durationSeconds || 4)),
     }),
   });
 
@@ -659,7 +667,7 @@ export async function checkVideoStatus(operation: VolcengineOperation, useMockMo
   const status = String(payload?.status || payload?.data?.status || '').toLowerCase();
 
   if (status.includes('success') || status.includes('succeed') || status.includes('completed')) {
-    const uri = findFirstUrl(payload, true);
+    const uri = payload?.content?.video_url || payload?.content?.videoUrl || payload?.data?.content?.video_url || findFirstUrl(payload, true);
     return {
       done: true,
       response: uri

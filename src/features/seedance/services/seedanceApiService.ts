@@ -1,4 +1,4 @@
-import { loadApiSettings, resolveVolcengineBaseUrl } from '../../../services/apiConfig.ts';
+import { loadApiSettings } from '../../../services/apiConfig.ts';
 import { ensureInlineImageDataUrl } from '../../../services/requestBuilders.ts';
 import { compileSeedanceRequest } from './seedanceDraft.ts';
 import type { SeedanceApiModelKey, SeedanceApiTask, SeedanceDraft } from '../types.ts';
@@ -11,14 +11,18 @@ function getSeedanceConfig() {
   return loadApiSettings().seedance;
 }
 
-function getBaseUrl() {
-  return resolveVolcengineBaseUrl(getVolcengineConfig().baseUrl).replace(/\/$/, '');
+function getBaseUrl(path: string) {
+  const settings = loadApiSettings();
+  if (settings.mockApi.enabled && settings.volcengine.baseUrl) {
+    return settings.volcengine.baseUrl.replace(/\/$/u, '');
+  }
+  return `${settings.newapi.baseUrl.replace(/\/$/u, '')}/api/v3`;
 }
 
 function getHeaders() {
-  const apiKey = getVolcengineConfig().apiKey.trim();
+  const apiKey = loadApiSettings().newapi.apiKey.trim() || getVolcengineConfig().apiKey.trim();
   if (!apiKey) {
-    throw new Error('未配置火山引擎 API Key。');
+    throw new Error('NewAPI 未登录，请先登录 NewAPI。');
   }
 
   return {
@@ -27,8 +31,22 @@ function getHeaders() {
   };
 }
 
+function resolveHuanxingVideoModel(modelId: string, modelKey: SeedanceApiModelKey): string {
+  const normalized = modelId.trim().toLowerCase();
+  if (!normalized || normalized === 'seedance') {
+    return modelKey === 'fast' ? 'doubao-seedance-2.0-fast' : 'doubao-seedance-2.0';
+  }
+  if (normalized === 'seedance-fast' || normalized === 'seedance2.0fast') {
+    return 'doubao-seedance-2.0-fast';
+  }
+  if (normalized === 'seedance-mini' || normalized === 'seedance2.0mini') {
+    return 'doubao-seedance-2.0-mini';
+  }
+  return modelId.trim();
+}
+
 async function requestJson(path: string, init: RequestInit) {
-  const response = await fetch(`${getBaseUrl()}${path}`, {
+  const response = await fetch(`${getBaseUrl(path)}${path}`, {
     ...init,
     headers: {
       ...getHeaders(),
@@ -65,18 +83,20 @@ function resolveModelId(modelKey: SeedanceApiModelKey) {
 }
 
 function mapTask(payload: Record<string, any>): SeedanceApiTask {
+  const data = payload?.data && typeof payload.data === 'object' ? payload.data : payload;
+  const content = data?.content && typeof data.content === 'object' ? data.content : {};
   return {
-    id: String(payload.id || '').trim(),
-    status: String(payload.status || '').trim(),
-    model: typeof payload.model === 'string' ? payload.model : '',
-    videoUrl: payload?.content?.video_url || '',
-    lastFrameUrl: payload?.content?.last_frame_url || '',
-    createdAt: typeof payload.created_at === 'number' ? payload.created_at : undefined,
-    updatedAt: typeof payload.updated_at === 'number' ? payload.updated_at : undefined,
-    ratio: typeof payload.ratio === 'string' ? payload.ratio : '',
-    resolution: typeof payload.resolution === 'string' ? payload.resolution : '',
-    duration: typeof payload.duration === 'number' ? payload.duration : undefined,
-    error: payload?.error || null,
+    id: String(data.id || data.task_id || '').trim(),
+    status: String(data.status || '').trim(),
+    model: typeof data.model === 'string' ? data.model : '',
+    videoUrl: content.video_url || content.videoUrl || '',
+    lastFrameUrl: content.last_frame_url || content.lastFrameUrl || '',
+    createdAt: typeof data.created_at === 'number' ? data.created_at : undefined,
+    updatedAt: typeof data.updated_at === 'number' ? data.updated_at : undefined,
+    ratio: typeof data.ratio === 'string' ? data.ratio : '',
+    resolution: typeof data.resolution === 'string' ? data.resolution : '',
+    duration: typeof data.duration === 'number' ? data.duration : undefined,
+    error: data?.error || null,
     raw: payload,
   };
 }
@@ -134,7 +154,7 @@ export async function createSeedanceTask(draft: SeedanceDraft, modelKey: Seedanc
   const payload = await requestJson('/contents/generations/tasks', {
     method: 'POST',
     body: JSON.stringify({
-      model: resolveModelId(modelKey),
+      model: resolveHuanxingVideoModel(resolveModelId(modelKey), modelKey),
       content: compiled.content,
       resolution: compiled.resolution,
       ratio: compiled.ratio,

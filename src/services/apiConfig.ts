@@ -62,6 +62,7 @@ export const DEFAULT_GEMINI_BASE_URL = 'https://generativelanguage.googleapis.co
 export const DEFAULT_VOLCENGINE_BASE_URL = 'https://ark.cn-beijing.volces.com/api/v3';
 export const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
 export const DEFAULT_ALIYUN_BASE_URL = 'https://dashscope.aliyuncs.com/api/v1';
+export const DEFAULT_NEWAPI_BASE_URL = ((import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_NEWAPI_BASE_URL || 'https://api.huanxing.ai').replace(/\/+$/u, '');
 
 const MODEL_PROVIDER_CATALOG = modelCatalogConfig.providers as Record<ModelProviderId, ProviderCatalog>;
 const PRICING_CATALOG_CONFIG = (modelCatalogConfig.pricingConfig || {}) as PricingCatalogConfig;
@@ -149,6 +150,16 @@ const ROLE_BY_SOURCE_ID: Record<Exclude<ModelSourceId, ''>, ModelRole> = {
 };
 
 export const defaultApiSettings: ApiSettings = {
+  newapi: {
+    baseUrl: DEFAULT_NEWAPI_BASE_URL,
+    apiKey: '',
+    user: null,
+    textModel: 'gpt-5.6-sol',
+    imageModel: 'gpt-image-2',
+    videoModel: 'doubao-seedance-2.0',
+    tokens: [],
+    selectedTokenId: null,
+  },
   gemini: {
     apiKey: '',
     baseUrl: DEFAULT_GEMINI_BASE_URL,
@@ -163,17 +174,17 @@ export const defaultApiSettings: ApiSettings = {
   volcengine: {
     enabled: true,
     apiKey: '',
-    baseUrl: DEFAULT_VOLCENGINE_BASE_URL,
+    baseUrl: `${DEFAULT_NEWAPI_BASE_URL}/v1`,
     promptLanguage: getProviderPromptLanguageCatalog('volcengine').default,
-    textModel: VOLCENGINE_MODEL_CATALOG.text[0].endpointId,
+    textModel: 'gpt-5.6-sol',
     imageModel: VOLCENGINE_MODEL_CATALOG.image[0].endpointId,
-    videoModel: VOLCENGINE_MODEL_CATALOG.video[0].endpointId,
+    videoModel: 'doubao-seedance-2.0',
     customModels: [],
   },
   openai: {
     enabled: true,
     apiKey: '',
-    baseUrl: DEFAULT_OPENAI_BASE_URL,
+    baseUrl: `${DEFAULT_NEWAPI_BASE_URL}/v1`,
     promptLanguage: getProviderPromptLanguageCatalog('openai').default,
     imageModel: 'gpt-image-2',
     customModels: [],
@@ -188,8 +199,8 @@ export const defaultApiSettings: ApiSettings = {
   },
   seedance: {
     enabled: true,
-    apiModel: 'doubao-seedance-2-0-260128',
-    fastApiModel: 'doubao-seedance-2-0-fast-260128',
+    apiModel: 'doubao-seedance-2.0',
+    fastApiModel: 'doubao-seedance-2.0-fast',
     defaultExecutor: 'ark',
     cliModelVersion: 'seedance2.0',
     pollIntervalSec: 15,
@@ -211,9 +222,9 @@ export const defaultApiSettings: ApiSettings = {
     pathPrefix: 'reference-videos/',
   },
   defaultModels: {
-    text: 'gemini.textModel',
-    image: 'gemini.imageModel',
-    video: 'gemini.fastVideoModel',
+    text: 'volcengine.textModel',
+    image: 'openai.imageModel',
+    video: 'volcengine.videoModel',
   },
 };
 
@@ -223,19 +234,19 @@ const MODEL_SOURCE_META: Record<Exclude<ModelSourceId, ''>, { label: string; pro
   'gemini.proImageModel': { label: '高质量图像模型', providerLabel: MODEL_PROVIDER_CATALOG.gemini.label },
   'gemini.fastVideoModel': { label: '快速视频模型', providerLabel: MODEL_PROVIDER_CATALOG.gemini.label },
   'gemini.proVideoModel': { label: '高质量视频模型', providerLabel: MODEL_PROVIDER_CATALOG.gemini.label },
-  'volcengine.textModel': { label: '文本模型', providerLabel: MODEL_PROVIDER_CATALOG.volcengine.label },
-  'volcengine.imageModel': { label: '图像模型', providerLabel: MODEL_PROVIDER_CATALOG.volcengine.label },
-  'volcengine.videoModel': { label: '视频模型', providerLabel: MODEL_PROVIDER_CATALOG.volcengine.label },
-  'openai.imageModel': { label: '图像模型', providerLabel: MODEL_PROVIDER_CATALOG.openai.label },
+  'volcengine.textModel': { label: '文本模型', providerLabel: 'NewAPI' },
+  'volcengine.imageModel': { label: '图像模型', providerLabel: 'NewAPI' },
+  'volcengine.videoModel': { label: '视频模型', providerLabel: 'NewAPI' },
+  'openai.imageModel': { label: '图像模型', providerLabel: 'NewAPI' },
   'aliyun.fastVideoModel': { label: '快速视频模型', providerLabel: MODEL_PROVIDER_CATALOG.aliyun?.label || '阿里云' },
   'seedance.apiModel': { label: 'Seedance 2.0', providerLabel: '火山引擎 Ark' },
   'seedance.fastApiModel': { label: 'Seedance 2.0 Fast', providerLabel: '火山引擎 Ark' },
 };
 
 const ROLE_SOURCE_IDS: Record<ModelRole, ModelSourceId[]> = {
-  text: ['gemini.textModel', 'volcengine.textModel'],
-  image: ['gemini.imageModel', 'gemini.proImageModel', 'volcengine.imageModel', 'openai.imageModel'],
-  video: ['gemini.fastVideoModel', 'gemini.proVideoModel', 'volcengine.videoModel', 'aliyun.fastVideoModel'],
+  text: ['volcengine.textModel'],
+  image: ['openai.imageModel'],
+  video: ['volcengine.videoModel'],
 };
 
 export const DEFAULT_MODEL_ROLE_META: Record<ModelRole, { title: string; description: string }> = {
@@ -536,6 +547,33 @@ export function resolveGeminiBaseUrl(baseUrl?: string): string {
 }
 
 function normalizeApiSettings(settings: ApiSettings): ApiSettings {
+  const legacyApiKey = settings.newapi?.apiKey || settings.openai?.apiKey || settings.volcengine?.apiKey || '';
+  const normalizedNewApiBaseUrl = (settings.newapi?.baseUrl || DEFAULT_NEWAPI_BASE_URL)
+    .trim().replace(/\/+$/u, '').replace(/\/v1$/iu, '') || DEFAULT_NEWAPI_BASE_URL;
+  const normalizedTokens = Array.isArray(settings.newapi?.tokens)
+    ? settings.newapi.tokens.filter((token: any) => token && Number.isFinite(Number(token.id)) && typeof token.key === 'string').map((token: any) => ({
+      id: Number(token.id), name: String(token.name || `令牌 ${token.id}`), group: String(token.group || 'default'), status: Number(token.status || 1), key: String(token.key),
+    }))
+    : [];
+  const selectedTokenId = Number.isFinite(Number(settings.newapi?.selectedTokenId)) ? Number(settings.newapi.selectedTokenId) : null;
+  const selectedToken = normalizedTokens.find((token) => token.id === selectedTokenId)
+    || normalizedTokens.find((token) => token.group.toLowerCase() === 'default')
+    || normalizedTokens[0];
+  const normalizedNewApi = {
+    ...defaultApiSettings.newapi,
+    ...(settings.newapi || {}),
+    baseUrl: normalizedNewApiBaseUrl,
+    apiKey: selectedToken?.key || legacyApiKey,
+    textModel: settings.newapi?.textModel?.trim() || defaultApiSettings.newapi.textModel,
+    imageModel: settings.newapi?.imageModel?.trim() || defaultApiSettings.newapi.imageModel,
+    videoModel: (() => {
+      const value = settings.newapi?.videoModel?.trim();
+      return !value || value.toLowerCase() === 'seedance' ? defaultApiSettings.newapi.videoModel : value;
+    })(),
+    tokens: normalizedTokens,
+    selectedTokenId: selectedToken?.id ?? selectedTokenId,
+    user: settings.newapi?.user && typeof settings.newapi.user === 'object' ? settings.newapi.user : null,
+  };
   const geminiLanguageCatalog = getProviderPromptLanguageCatalog('gemini');
   const volcengineLanguageCatalog = getProviderPromptLanguageCatalog('volcengine');
   const openaiLanguageCatalog = getProviderPromptLanguageCatalog('openai');
@@ -555,6 +593,7 @@ function normalizeApiSettings(settings: ApiSettings): ApiSettings {
 
   return {
     ...settings,
+    newapi: normalizedNewApi,
     gemini: {
       ...settings.gemini,
       baseUrl: resolveGeminiBaseUrl(settings.gemini.baseUrl),
@@ -564,27 +603,26 @@ function normalizeApiSettings(settings: ApiSettings): ApiSettings {
     volcengine: {
       ...settings.volcengine,
       enabled: true,
-      baseUrl: resolveVolcengineBaseUrl(settings.volcengine.baseUrl),
+      apiKey: normalizedNewApi.apiKey,
+      baseUrl: `${normalizedNewApi.baseUrl}/v1`,
       customModels: normalizeCustomModels(settings.volcengine.customModels, 'volcengine'),
       promptLanguage: normalizedVolcenginePromptLanguage,
-      textModel: normalizeVolcengineModelValue('text', settings.volcengine.textModel, settings),
+      textModel: normalizedNewApi.textModel,
       imageModel: normalizeVolcengineModelValue('image', settings.volcengine.imageModel, settings),
-      videoModel: normalizeVolcengineModelValue('video', settings.volcengine.videoModel, settings),
+      videoModel: normalizedNewApi.videoModel,
     },
     openai: {
       enabled: settings.openai?.enabled !== false,
-      apiKey: typeof settings.openai?.apiKey === 'string' ? settings.openai.apiKey : '',
-      baseUrl: resolveOpenAIBaseUrl(settings.openai?.baseUrl),
+      apiKey: normalizedNewApi.apiKey,
+      baseUrl: `${normalizedNewApi.baseUrl}/v1`,
       customModels: normalizeCustomModels(settings.openai?.customModels, 'openai'),
       promptLanguage: normalizedOpenAIPromptLanguage,
-      imageModel: typeof settings.openai?.imageModel === 'string' && settings.openai.imageModel.trim()
-        ? settings.openai.imageModel.trim()
-        : defaultApiSettings.openai.imageModel,
+      imageModel: normalizedNewApi.imageModel,
     },
     aliyun: {
-      enabled: settings.aliyun?.enabled !== false,
-      apiKey: typeof settings.aliyun?.apiKey === 'string' ? settings.aliyun.apiKey : '',
-      baseUrl: resolveAliyunBaseUrl(settings.aliyun?.baseUrl),
+      enabled: false,
+      apiKey: normalizedNewApi.apiKey,
+      baseUrl: `${normalizedNewApi.baseUrl}/v1`,
       customModels: normalizeCustomModels(settings.aliyun?.customModels, 'aliyun'),
       promptLanguage: normalizedAliyunPromptLanguage,
       fastVideoModel: typeof settings.aliyun?.fastVideoModel === 'string' && settings.aliyun.fastVideoModel.trim()
@@ -592,10 +630,11 @@ function normalizeApiSettings(settings: ApiSettings): ApiSettings {
         : defaultApiSettings.aliyun.fastVideoModel,
     },
     seedance: {
-      enabled: settings.seedance?.enabled !== false,
-      apiModel: typeof settings.seedance?.apiModel === 'string' ? settings.seedance.apiModel : defaultApiSettings.seedance.apiModel,
-      fastApiModel: typeof settings.seedance?.fastApiModel === 'string' ? settings.seedance.fastApiModel : defaultApiSettings.seedance.fastApiModel,
-      defaultExecutor: settings.seedance?.defaultExecutor === 'cli' ? 'cli' : 'ark',
+      ...settings.seedance,
+      enabled: true,
+      apiModel: normalizedNewApi.videoModel,
+      fastApiModel: normalizedNewApi.videoModel,
+      defaultExecutor: 'ark',
       cliModelVersion: normalizeSeedanceModelVersion(
         settings.seedance?.cliModelVersion
           ?? (settings.seedance as unknown as Record<string, unknown> | undefined)?.modelVersion,
@@ -604,7 +643,7 @@ function normalizeApiSettings(settings: ApiSettings): ApiSettings {
       pollIntervalSec: Number.isFinite(settings.seedance?.pollIntervalSec)
         ? Math.max(5, Math.min(60, Number(settings.seedance.pollIntervalSec)))
         : defaultApiSettings.seedance.pollIntervalSec,
-      bridgeUrl: typeof settings.seedance?.bridgeUrl === 'string' ? settings.seedance.bridgeUrl : defaultApiSettings.seedance.bridgeUrl,
+      bridgeUrl: '',
     },
     mockApi: {
       enabled: Boolean(settings.mockApi?.enabled),
@@ -641,6 +680,10 @@ function normalizeApiSettings(settings: ApiSettings): ApiSettings {
 
 function mergeApiSettings(parsed?: Partial<ApiSettings>): ApiSettings {
   return normalizeApiSettings({
+    newapi: {
+      ...defaultApiSettings.newapi,
+      ...(parsed?.newapi || {}),
+    },
     gemini: {
       ...defaultApiSettings.gemini,
       ...(parsed?.gemini || {}),
@@ -707,7 +750,7 @@ export function getModelSourceDisplayValue(settings: ApiSettings, sourceId: Mode
     return `${getSeedanceApiModelLabelForSourceId(sourceId)} (${value})`;
   }
 
-  const providerId = sourceId.startsWith('volcengine.') ? 'volcengine' : (sourceId.startsWith('aliyun.') ? 'aliyun' : 'gemini');
+  const providerId = sourceId.startsWith('volcengine.') ? 'volcengine' : (sourceId.startsWith('openai.') ? 'openai' : (sourceId.startsWith('aliyun.') ? 'aliyun' : 'gemini'));
   return formatConfiguredModelDisplay(providerId, ROLE_BY_SOURCE_ID[sourceId], value);
 }
 

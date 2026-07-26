@@ -138,7 +138,7 @@ function getOpenAIConfig(body) {
   const config = body?.config && typeof body.config === 'object' ? body.config : {};
   const apiKey = String(config.apiKey || process.env.OPENAI_API_KEY || '').trim();
   if (!apiKey) {
-    throw new Error('OpenAI API Key 未配置。');
+    throw new Error('NewAPI API Key 未配置。');
   }
 
   return {
@@ -356,6 +356,34 @@ async function requestOpenAITaskStatus(config, taskId, requestId, attempt, norma
   }, normalizeErrorMessage);
 }
 
+async function requestHuanxingImageTask(config, imageRequest, references = [], normalizeErrorMessage = defaultNormalizeErrorMessage) {
+  // Huanxing ImageHub exposes gpt-image-2 through the standard Images API.
+  // Keep the bridge response shape unchanged for the renderer, but send the
+  // documented JSON payload directly instead of treating images as video tasks.
+  const body = {
+    model: imageRequest.model || 'gpt-image-2',
+    prompt: imageRequest.prompt,
+    ...(imageRequest.size ? { size: imageRequest.size } : {}),
+    ...(imageRequest.quality ? { quality: imageRequest.quality } : {}),
+    ...(imageRequest.output_format ? { output_format: imageRequest.output_format } : {}),
+    ...(imageRequest.output_compression !== undefined ? { output_compression: imageRequest.output_compression } : {}),
+    ...(imageRequest.moderation ? { moderation: imageRequest.moderation } : {}),
+    n: imageRequest.n || 1,
+    response_format: 'url',
+    ...(references.length > 0 ? { image: buildOpenAIReferenceImageDataUrls(references) } : {}),
+  };
+  const endpoint = references.length > 0 ? '/images/edits' : '/images/generations';
+  const requestBody = references.length > 0
+    ? buildOpenAIEditFormData({ ...body, image: undefined }, references)
+    : JSON.stringify(body);
+  const submitted = await requestOpenAIJson(config, endpoint, {
+    method: 'POST',
+    ...(references.length > 0 ? {} : { headers: { 'Content-Type': 'application/json' } }),
+    body: requestBody,
+  }, { requestId: createOpenAILogId(), requestSummary: { path: endpoint, model: body.model } }, normalizeErrorMessage);
+  return submitted;
+}
+
 async function waitForOpenAIAsyncTaskResult(config, submissionPayload, requestId, normalizeErrorMessage) {
   const taskIds = getOpenAIAsyncTaskIds(submissionPayload);
   if (taskIds.length === 0) {
@@ -448,6 +476,9 @@ async function waitForOpenAIAsyncTaskResult(config, submissionPayload, requestId
 }
 
 async function requestOpenAIGenerationJson(config, imageRequest, sizeFallbackAspectRatio, normalizeErrorMessage) {
+  if (String(imageRequest?.model || '').toLowerCase().startsWith('gpt-image-2')) {
+    return requestHuanxingImageTask(config, { ...imageRequest, size_fallback_aspect_ratio: sizeFallbackAspectRatio }, [], normalizeErrorMessage);
+  }
   const requestId = createOpenAILogId();
   try {
     const payload = await requestOpenAIJson(config, '/images/generations', {
@@ -534,6 +565,9 @@ function buildOpenAIReferenceImageDataUrls(references) {
 }
 
 async function requestOpenAIEditJson(config, imageRequest, references, sizeFallbackAspectRatio, normalizeErrorMessage) {
+  if (String(imageRequest?.model || '').toLowerCase().startsWith('gpt-image-2')) {
+    return requestHuanxingImageTask(config, { ...imageRequest, size_fallback_aspect_ratio: sizeFallbackAspectRatio }, references, normalizeErrorMessage);
+  }
   if (shouldUseOpenAIImageUrlsReferenceMode(config)) {
     return requestOpenAIGenerationJson(config, {
       ...imageRequest,

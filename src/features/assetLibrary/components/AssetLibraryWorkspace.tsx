@@ -124,7 +124,7 @@ export function AssetLibraryWorkspace({
         title="资产库"
         description={(
           <p>
-            汇总所有项目的图片与视频，按项目写入本地目录。
+            汇总所有项目的图片与视频，并同步到寰星素材库。
           </p>
         )}
         actions={(
@@ -146,20 +146,14 @@ export function AssetLibraryWorkspace({
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <div className="studio-eyebrow">Storage</div>
-              <h2 className="mt-2 text-xl font-semibold text-[var(--studio-text)]">资产库存储</h2>
+              <h2 className="mt-2 text-xl font-semibold text-[var(--studio-text)]">寰星素材库</h2>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <label className="block min-w-0">
-            <span className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--studio-dim)]">本地路径</span>
-            <input
-              value={assetLibraryRootDraft}
-              onChange={(event) => onAssetLibraryRootDraftChange(event.target.value)}
-              placeholder={assetLibraryConfig?.defaultRootPath || 'local_asset_library'}
-              className="studio-input mt-2"
-            />
+            <span className="text-sm leading-6 text-[var(--studio-muted)]">生成的图片和视频会使用当前寰星账号保存，素材按账号隔离，可在同一账号的其他客户端继续使用。</span>
           </label>
           <div className="flex flex-wrap gap-2 lg:justify-end">
             <button
@@ -168,16 +162,16 @@ export function AssetLibraryWorkspace({
               disabled={isSavingAssetLibraryConfig}
               className="studio-button studio-button-primary px-4"
             >
-              {isSavingAssetLibraryConfig ? <img src="./assets/loading.gif" alt="" className="h-4 w-4" /> : <Upload className="h-4 w-4 rotate-180" />}
-              保存路径
+              {isSavingAssetLibraryConfig ? <img src="./assets/loading.gif" alt="" className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
+              刷新状态
             </button>
             <button
               type="button"
-              onClick={() => onApplyAssetLibraryRoot('')}
-              disabled={isSavingAssetLibraryConfig}
+              onClick={() => onRefreshAssetLibrarySettings()}
+              disabled={isSavingAssetLibraryConfig || isRefreshingAssetLibraryConfig}
               className="studio-button studio-button-secondary px-4"
             >
-              恢复默认
+              刷新素材库
             </button>
           </div>
         </div>
@@ -190,7 +184,7 @@ export function AssetLibraryWorkspace({
           </div>
           <h3 className="mt-5 text-xl font-semibold text-[var(--studio-text)]">资产库还是空的</h3>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[var(--studio-muted)]">
-            先去“视频制作”里生成图片或视频，这里会自动汇总展示，并支持写入本地目录。
+            先去“视频制作”里生成图片或视频，这里会自动汇总展示，并支持同步到寰星素材库。
           </p>
         </StudioPanel>
       ) : (

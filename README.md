@@ -2,7 +2,7 @@
 
 AI 导演工作台。把一句创意想法逐步整理成 Brief、角色 / 场景资产、分镜、首尾帧提示词、视频提示词和可轮询的视频生成任务。
 
-当前项目以 `Electron + React + Vite + TypeScript` 桌面应用为主，支持 `Google Gemini / Veo`、`火山引擎 Ark`、`阿里云百炼 HappyHorse`，并提供本地 Seedance / Dreamina bridge 和 Mock 演示流程。
+当前项目以 `Electron + React + Vite + TypeScript` 桌面应用为主，所有模型和素材服务统一连接 `NewAPI`（默认地址为 Huanxing API 部署）。
 
 ## 功能
 
@@ -10,10 +10,10 @@ AI 导演工作台。把一句创意想法逐步整理成 Brief、角色 / 场�
 - 生成并维护角色、场景、商品等一致性资产
 - 生成分镜列表、首帧 / 尾帧提示词、图像提示词、视频提示词
 - 支持单镜头视频、转场视频、极速成片工作流
-- 支持 Gemini / Veo、火山引擎 Ark、阿里云百炼、Seedance bridge
-- 支持按流程阶段或单次操作覆盖模型
-- 支持 Mock 模式，无密钥时也能演示主流程
-- 本地保存项目、API 配置、调用日志、素材库和界面偏好
+- 支持 NewAPI 用户登录与注册，登录后自动获取账号令牌
+- 默认文本模型 `gpt-5.6-sol`、生图模型 `gpt-image-2`、视频模型 `seedance`
+- 图片使用 Huanxing Images API（`/v1/images/generations`、`/v1/images/edits`），视频使用 Seedance v3，素材库统一使用 Huanxing API 的 `/api/material`（不直接调用火山 Ark 素材接口）
+- 本地保存项目、连接配置、调用日志和界面偏好；素材同步到当前 NewAPI 账号
 
 ## 用户使用
 
@@ -23,7 +23,7 @@ AI 导演工作台。把一句创意想法逐步整理成 Brief、角色 / 场�
 
 - Node.js 22+ 推荐
 - npm
-- 如需本地 Seedance / Dreamina 流程，确保机器上可直接执行 `dreamina`
+- 准备一个已启用注册/登录和令牌功能的 NewAPI 地址
 
 ### 2. 安装依赖
 
@@ -45,10 +45,9 @@ npm run dev:electron
 
 ### 4. 首次进入应用建议先做这几件事
 
-1. 进入“API 配置”，按需填写 Gemini、火山引擎 Ark、阿里云百炼、TOS 等配置
-2. 选择默认文本 / 生图 / 视频模型
-3. 如果暂时没有模型密钥，先开启 `Mock` 模式跑通主流程
-4. 如需本地 Dreamina 执行器，确认配置页里的 Seedance 健康检查通过
+1. 在启动页填写 NewAPI 地址并登录，或切换到注册页创建账号
+2. 在“API 配置”中按需调整三类模型名
+3. 生成图片、视频或保存素材时，额度和权限均来自当前 NewAPI 账号
 
 ### 5. 推荐使用路径
 
@@ -90,21 +89,13 @@ npm run preview
 
 ## 配置说明
 
-### Gemini
+### NewAPI
 
-在应用内的“API 配置”页填写 API Key 和默认模型即可。
+登录后应用自动读取当前账号的 API 令牌，不需要再复制 Key。连接地址可以填写 Huanxing API 的自部署地址；模型请求使用 OpenAI 兼容文本接口、Huanxing Images API 和 Seedance v3 视频接口。
 
-### 火山引擎 Ark
+### 素材库
 
-Ark API Key、模型 ID / Endpoint ID、提示词语言都在“API 配置”页里维护。
-
-### 阿里云百炼 (HappyHorse)
-
-在“API 配置”页中填写百炼 API Key 及 Base URL（可选）。提交带参考图的生成任务时，应用会自动通过百炼的临时 OSS 接口完成资源直传。
-
-### Seedance / Dreamina bridge
-
-桌面版会自动启动内置 bridge。若使用本地 Dreamina 执行器，只需保证 `dreamina` 命令在系统环境中可用；是否连通可直接在“API 配置”页查看。
+“资产库”中的生成结果会创建或复用当前项目分组，并通过 `POST /api/material?Action=CreateAsset` 写入 Huanxing 素材库。素材权限按 Huanxing 令牌隔离。
 
 如需调试 Web 版，默认把 `/api/seedance` 代理到 `http://127.0.0.1:3210`，这时再单独启动 `npm run dev:bridge` 即可。
 

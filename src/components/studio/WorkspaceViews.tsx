@@ -148,12 +148,12 @@ const NAV_ITEMS_BY_PROJECT: Record<SupportedWorkspaceProjectType, NavItem[]> = {
 const HOME_ENTRY_COPY: Record<SupportedWorkspaceProjectType, { title: string; description: string; cornerBadge?: string }> = {
   'creative-video': {
     title: '故事、资产、分镜与生成',
-    description: '从故事、角色和风格出发，进入简报、资产、分镜与视频生成的完整导演流程。支持 Seedance 和 Veo。',
+    description: '从故事、角色和风格出发，进入简报、资产、分镜与视频生成的完整导演流程。',
     cornerBadge: 'Legacy',
   },
   'fast-video': {
     title: '一句提示词全能参考视频生成',
-    description: '全新 Seedance 2.0 API 和 CLI支持, 真人素材库, 视频参考等功能均已支持。',
+    description: '通过 NewAPI 使用 Seedance 视频生成、参考素材和统一额度。',
     cornerBadge: 'New',
   },
 };
@@ -316,7 +316,7 @@ export function StudioSidebar({
         view: 'imageCreation',
         label: '图片制作',
         description: 'GPT Image 2 生图与参考图',
-        countLabel: 'OpenAI',
+        countLabel: 'NewAPI',
         icon: ImageIcon,
       },
       {
@@ -332,13 +332,6 @@ export function StudioSidebar({
         description: '平台公开、真人与虚拟人像',
         countLabel: '真人+虚拟',
         icon: Users,
-      },
-      {
-        view: 'cliQueue',
-        label: '任务队列',
-        description: '本地排队与自动提交',
-        countLabel: `${queueCount} 个任务`,
-        icon: ListOrdered,
       },
     ];
 

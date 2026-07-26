@@ -9,8 +9,8 @@ import crypto from 'node:crypto'
 import { app as electronApp } from 'electron'
 import { createAppStateStore } from '../../server/appStateStore.mjs'
 import { buildAssetLibraryFileName } from '../../server/assetLibraryNaming.mjs'
-import { registerArkAssetOpenApiRoutes } from '../../server/arkAssetOpenApi.mjs'
 import { registerOpenAIImageBridgeRoutes } from '../../server/openaiImageBridgeRoutes.mjs'
+import { registerHuanxingProxyRoutes } from '../../server/huanxingProxyRoutes.mjs'
 
 const execFileAsync = promisify(execFile)
 const COMMON_CLI_PATH_ENTRIES = [
@@ -72,7 +72,7 @@ export async function startBridge(port = 3210) {
     }
     next()
   })
-  registerArkAssetOpenApiRoutes(app)
+  registerHuanxingProxyRoutes(app)
 
   // Helper functions (replicated from seedanceBridge.mjs)
   function taskDir(submitId) {

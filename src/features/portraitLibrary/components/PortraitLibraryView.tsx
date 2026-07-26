@@ -49,7 +49,7 @@ import {
   uploadVirtualPortraitAsset,
   type ArkAsset,
   type ArkAssetGroup,
-} from '../../../services/volcengineAssetService.ts';
+} from '../../../services/huanxingMaterialService.ts';
 import { generateStoryboardImage } from '../../../services/volcengineService.ts';
 
 type PortraitLibraryViewProps = {
@@ -1112,6 +1112,7 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
       setRealPortraitUploadStep('真人认证已通过，正在查询 GroupId...');
       const validationResult = await getRealPortraitValidationResult({
         bytedToken,
+        resultCode: parsed.resultCode || undefined,
         projectName,
       });
       if (!isCurrentValidationFlow()) {
@@ -1326,7 +1327,7 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
     setVirtualPortraitDraftError('');
 
     try {
-      setVirtualPortraitUploadStep('上传图片并写入 Ark 素材库...');
+      setVirtualPortraitUploadStep('上传图片并写入寰星素材库...');
       const uploadResult = await uploadVirtualPortraitAsset({
         file,
         description,
@@ -1640,7 +1641,7 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
       return;
     }
     if (!assetId && !file) {
-      setRealPortraitDraftError('自动创建 Ark 素材资产需要上传原始图片文件，请重新选择或粘贴图片。');
+      setRealPortraitDraftError('自动创建寰星素材资产需要上传原始图片文件，请重新选择或粘贴图片。');
       return;
     }
 
@@ -1650,7 +1651,7 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
     try {
       let uploadedRealPortrait: Awaited<ReturnType<typeof uploadRealPortraitAsset>> | null = null;
       if (!assetId) {
-        setRealPortraitUploadStep('上传图片到 TOS 并调用 Ark CreateAsset...');
+        setRealPortraitUploadStep('上传图片到公网地址并调用寰星 CreateAsset...');
         uploadedRealPortrait = await uploadRealPortraitAsset({
           file: file!,
           description,
@@ -2374,7 +2375,7 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
                     : '虚拟人像素材资产组合'}
                 </h2>
                 <p className={`mt-2 text-sm leading-6 ${dimTextClass}`}>
-                  默认只读取本地缓存；只有点击“手动刷新”时才会向 Ark 拉取最新列表和状态。
+                  默认只读取本地缓存；只有点击“手动刷新”时才会向寰星素材库拉取最新列表和状态。
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -2482,7 +2483,7 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
                     <Upload className="h-6 w-6 text-[var(--studio-muted)]" />
                   </span>
                   <p className="text-lg font-medium text-[var(--studio-text)]">该组合还没有素材</p>
-                  <p className="mt-2 text-sm text-[var(--studio-muted)]">上传图片后会生成 Ark assetId，状态 Active 后即可选择使用。</p>
+                  <p className="mt-2 text-sm text-[var(--studio-muted)]">上传图片后会生成寰星 assetId，状态 Active 后即可选择使用。</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
@@ -3021,7 +3022,7 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
                 <div className="studio-eyebrow">Virtual Portrait Assets</div>
                 <h2 className="mt-2 text-2xl font-semibold text-[var(--studio-text)]">上传虚拟人像资产</h2>
                 <p className={`mt-2 max-w-2xl text-sm leading-6 ${dimTextClass}`}>
-                  图片会先上传到 TOS 获取公网 URL，再写入 Ark 私域虚拟人像素材资产库。
+                  图片会先上传到公网存储获取 URL，再写入寰星私域虚拟人像素材库。
                 </p>
               </div>
               <button
@@ -3070,7 +3071,7 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
               <StudioPanel className="space-y-3 p-4" tone="soft">
                 <div className="text-sm font-semibold text-[var(--studio-text)]">入库流程</div>
                 <ul className={`space-y-2 text-sm leading-6 ${dimTextClass}`}>
-                  <li>使用 API 配置里的 TOS AccessKey 上传图片并生成公网 URL。</li>
+                  <li>使用已配置的公网存储上传图片并生成 URL，然后由寰星 API 写入素材库。</li>
                   <li>素材会写入当前组合，建议同一组合只维护同一个虚拟人物。</li>
                   <li>CreateAsset 返回 assetId 后只保存本地记录；后续状态需要手动刷新。</li>
                 </ul>

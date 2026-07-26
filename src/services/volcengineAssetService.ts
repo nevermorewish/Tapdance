@@ -1,10 +1,6 @@
 import { loadApiSettings } from './apiConfig.ts';
-import { buildSeedanceBridgeRequestUrl } from './seedanceBridgeUrl.ts';
 import { isTosConfigComplete, uploadFileToTos } from './tosUploadService.ts';
 
-const ARK_ASSET_REGION = 'cn-beijing';
-const ARK_ASSET_ENDPOINT = 'https://ark.cn-beijing.volcengineapi.com';
-const ARK_ASSET_VERSION = '2024-01-01';
 export const DEFAULT_VIRTUAL_PORTRAIT_ASSET_GROUP_NAME = 'Tapdance 虚拟人像';
 export const DEFAULT_VIRTUAL_PORTRAIT_PROJECT_NAME = 'default';
 export const ARK_VIRTUAL_PORTRAIT_GROUP_TYPE = 'AIGC';
@@ -96,26 +92,37 @@ export function isArkAssetFailedStatus(value?: string) {
   return normalizeArkAssetStatus(value) === 'Failed';
 }
 
-async function requestJson<T>(path: string, init?: RequestInit, explicitBaseUrl?: string): Promise<T> {
-  const response = await fetch(buildSeedanceBridgeRequestUrl(path, explicitBaseUrl), {
-    ...init,
+function materialBaseUrl() {
+  return loadApiSettings().newapi.baseUrl.replace(/\/+$/u, '');
+}
+
+async function callHuanxingMaterialApi<T>(action: ArkAssetApiAction, body: Record<string, any>): Promise<T> {
+  const apiKey = loadApiSettings().newapi.apiKey.trim();
+  if (!apiKey) {
+    throw new Error('请先登录寰星云科 API，再使用素材库。');
+  }
+
+  const response = await fetch(`${materialBaseUrl()}/api/material?Action=${encodeURIComponent(action)}`, {
+    method: 'POST',
     headers: {
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      ...(init?.headers || {}),
     },
+    body: JSON.stringify(body),
   });
 
   const text = await response.text();
   let payload: any = {};
 
-  try {
-    payload = text ? JSON.parse(text) : {};
-  } catch {
-    payload = { error: text || `HTTP ${response.status}` };
-  }
+  try { payload = text ? JSON.parse(text) : {}; } catch { payload = { message: text }; }
 
-  if (!response.ok) {
-    throw new Error(payload?.error || payload?.message || `HTTP ${response.status}`);
+  const errorMessage = payload?.error?.message
+    || payload?.error
+    || payload?.message
+    || payload?.ResponseMetadata?.Error?.Message
+    || `素材库请求失败 (${response.status})`;
+  if (!response.ok || payload?.success === false || payload?.error || payload?.ResponseMetadata?.Error) {
+    throw new Error(String(errorMessage));
   }
 
   return payload as T;
@@ -172,32 +179,11 @@ function normalizeAsset(value: any, fallbackId?: string, fallbackGroupId?: strin
   };
 }
 
-function getArkAssetCredentials() {
-  const tosConfig = loadApiSettings().tos;
-
-  if (!isTosConfigComplete(tosConfig)) {
-    throw new Error('请先在 API 配置中启用并填写 TOS 配置。素材上传需要 TOS 公网 URL，同时使用同一组 AccessKey 调用 Ark 素材资产 API。');
-  }
-
-  return {
-    accessKeyId: tosConfig!.accessKeyId.trim(),
-    accessKeySecret: tosConfig!.accessKeySecret.trim(),
-    region: ARK_ASSET_REGION,
-  };
-}
-
-async function callArkAssetApi<T>(action: ArkAssetApiAction, body: Record<string, any>, baseUrl?: string): Promise<T> {
-  const payload = await requestJson<any>('/ark/assets/call', {
-    method: 'POST',
-    body: JSON.stringify({
-      action,
-      version: ARK_ASSET_VERSION,
-      endpoint: ARK_ASSET_ENDPOINT,
-      credentials: getArkAssetCredentials(),
-      body,
-    }),
-  }, baseUrl);
-
+async function callArkAssetApi<T>(action: ArkAssetApiAction, body: Record<string, any>, _baseUrl?: string): Promise<T> {
+  // Keep the existing function name for the UI API, but route every asset
+  // operation through Huanxing's tenant-scoped material API. No Ark endpoint
+  // or Volcengine access key is used here.
+  const payload = await callHuanxingMaterialApi<any>(action, body);
   return unwrapArkResult(payload) as T;
 }
 
@@ -209,6 +195,7 @@ export async function listArkAssetGroups(params?: {
   baseUrl?: string;
 }) {
   const groupType = String(params?.groupType || ARK_VIRTUAL_PORTRAIT_GROUP_TYPE).trim() || ARK_VIRTUAL_PORTRAIT_GROUP_TYPE;
+  const projectName = params?.projectName ? normalizeProjectName(params.projectName) : '';
   const result = await callArkAssetApi<any>('ListAssetGroups', {
     Filter: {
       GroupType: groupType,
@@ -217,8 +204,8 @@ export async function listArkAssetGroups(params?: {
     },
     PageNumber: 1,
     PageSize: 50,
+    ...(projectName ? { ProjectName: projectName } : {}),
   }, params?.baseUrl);
-  const projectName = params?.projectName ? normalizeProjectName(params.projectName) : '';
 
   return (Array.isArray(result?.Items) ? result.Items : [])
     .map((item: any) => normalizeAssetGroup(item))
@@ -243,6 +230,7 @@ export async function listArkAssets(params?: {
     .map((item) => String(item || '').trim())
     .filter(Boolean);
   const groupType = String(params?.groupType || ARK_VIRTUAL_PORTRAIT_GROUP_TYPE).trim() || ARK_VIRTUAL_PORTRAIT_GROUP_TYPE;
+  const projectName = params?.projectName ? normalizeProjectName(params.projectName) : '';
   const result = await callArkAssetApi<any>('ListAssets', {
     Filter: {
       GroupType: groupType,
@@ -254,8 +242,8 @@ export async function listArkAssets(params?: {
     PageSize: Math.max(1, Math.min(100, params?.pageSize || 100)),
     SortBy: 'CreateTime',
     SortOrder: 'Desc',
+    ...(projectName ? { ProjectName: projectName } : {}),
   }, params?.baseUrl);
-  const projectName = params?.projectName ? normalizeProjectName(params.projectName) : '';
 
   return (Array.isArray(result?.Items) ? result.Items : [])
     .map((item: any) => normalizeAsset(item))
@@ -365,9 +353,12 @@ export async function createRealPortraitValidationSession(params: {
     CallbackURL: callbackURL,
     ProjectName: projectName,
   }, params.baseUrl);
+  const sessionItem = Array.isArray(result?.Sessions)
+    ? result.Sessions.find((item: any) => String(item?.H5Link || item?.h5Link || '').trim()) || result.Sessions[0]
+    : result;
   const session: RealPortraitValidationSession = {
-    bytedToken: String(result?.BytedToken || result?.bytedToken || '').trim(),
-    h5Link: String(result?.H5Link || result?.h5Link || '').trim(),
+    bytedToken: String(sessionItem?.BytedToken || sessionItem?.bytedToken || '').trim(),
+    h5Link: String(sessionItem?.H5Link || sessionItem?.h5Link || '').trim(),
     callbackURL: String(result?.CallbackURL || result?.callbackURL || callbackURL).trim(),
   };
 
@@ -380,6 +371,7 @@ export async function createRealPortraitValidationSession(params: {
 
 export async function getRealPortraitValidationResult(params: {
   bytedToken: string;
+  resultCode?: string | number;
   projectName?: string;
   baseUrl?: string;
 }) {
@@ -392,6 +384,7 @@ export async function getRealPortraitValidationResult(params: {
 
   const result = await callArkAssetApi<any>('GetVisualValidateResult', {
     BytedToken: bytedToken,
+    ...(params.resultCode !== undefined && String(params.resultCode).trim() ? { ResultCode: Number(params.resultCode) || params.resultCode } : {}),
     ProjectName: projectName,
   }, params.baseUrl);
   const groupId = String(result?.GroupId || result?.groupId || '').trim();

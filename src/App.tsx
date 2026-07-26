@@ -3,7 +3,6 @@ import packageMetadata from '../package.json';
 import { Brief, Asset, Shot, Project, ProjectType, ModelSourceId, PromptLanguage, AspectRatio, type MockApiScenario } from './types';
 import type { SeedanceDraft, SeedanceOverlayTemplateId } from './features/seedance/types.ts';
 import { generateBriefWithModel } from './services/modelService';
-import { Key } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { defaultApiSettings, DEFAULT_MODEL_ROLE_META, formatConfiguredModelDisplay, formatModelPricing, getDefaultModelSource, getModelBillingRule, getModelPricingLabel, getModelRoleFromSourceId, getPricedModelEntries, getProviderDisplayLabel, getProviderModelCatalog, getProviderPromptLanguageCatalog, getUsdToCnyExchangeRate, resolveModelSource, type ModelProviderId, type ModelRole } from './services/apiConfig';
 import {
@@ -57,6 +56,7 @@ import { useCreativeStyleContext } from './features/creativeFlow/hooks/useCreati
 import { useCreativeFlowUiState } from './features/creativeFlow/hooks/useCreativeFlowUiState.ts';
 import { useCreativeVideoPolling } from './features/creativeFlow/hooks/useCreativeVideoPolling.ts';
 import { ApiConfigWorkspace } from './features/apiConfig/components/ApiConfigWorkspace.tsx';
+import { NewApiAuthPanel } from './features/apiConfig/components/NewApiAuthPanel.tsx';
 import { useApiSettingsStorage } from './features/apiConfig/hooks/useApiSettingsStorage.ts';
 import { ImagePreviewModal } from './components/modals/ImagePreviewModal.tsx';
 import { SeedanceErrorModal, type SeedanceErrorModalAction, type SeedanceErrorModalPayload, type SeedanceErrorModalState } from './components/modals/SeedanceErrorModal.tsx';
@@ -197,7 +197,6 @@ export default function App() {
   const openSeedanceErrorModal = (config: NonNullable<SeedanceErrorModalState>) => {
     setSeedanceErrorModal(config);
   };
-  const hasManualGeminiKey = apiSettings.gemini.apiKey.trim().length > 0;
   const usdToCnyRate = getUsdToCnyExchangeRate();
   const {
     stylePresets,
@@ -641,27 +640,10 @@ export default function App() {
 
   useEffect(() => {
     const checkKey = async () => {
-      // In Electron, we assume the user might have provided a key in config or env
-      // but we still let the UI decide if it wants to show the block.
-      // For now, if it's Electron, we can be more lenient or check local storage.
-      if (typeof window !== 'undefined' && (window as any).electronAPI?.isElectron) {
-        setHasKey(true);
-        return;
-      }
-      
-      try {
-        if ((window as any).aistudio && (window as any).aistudio.hasSelectedApiKey) {
-          const has = await (window as any).aistudio.hasSelectedApiKey();
-          setHasKey(has);
-        } else {
-          setHasKey(true); // Fallback if not in AI Studio
-        }
-      } catch (e) {
-        setHasKey(true);
-      }
+      setHasKey(Boolean(apiSettings.newapi.apiKey.trim()));
     };
-    checkKey();
-  }, []);
+    void checkKey();
+  }, [apiSettings.newapi.apiKey]);
 
   useEffect(() => {
     if (!['apiConfig', 'fastInput', 'fastStoryboard', 'fastVideo'].includes(view)) {
@@ -857,7 +839,7 @@ export default function App() {
     };
   }, [apiSettings.mockApi.enabled, apiSettings.mockApi.scenario, isApiSettingsLoaded, setApiSettings]);
 
-  if (hasKey === null) {
+  if (!isApiSettingsLoaded || hasKey === null) {
     return (
       <>
         <div className={`theme-${themeMode} app-shell flex h-screen text-zinc-100 font-sans items-center justify-center`}>
@@ -868,42 +850,11 @@ export default function App() {
     );
   }
 
-  if (hasKey === false && !hasManualGeminiKey && view !== 'apiConfig') {
+  if (hasKey === false) {
     return (
       <>
         <div className={`theme-${themeMode} app-shell flex h-screen text-zinc-100 font-sans items-center justify-center p-4`}>
-          <div className="bg-zinc-900 p-8 rounded-xl border border-zinc-800 max-w-md text-center w-full">
-            <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Key className="w-8 h-8 text-indigo-500" />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-4">需要 API Key</h2>
-            <p className="text-zinc-400 mb-8 leading-relaxed">
-              此应用程序需要可用的 Gemini API Key。你可以直接使用 AI Studio 选择的 Key，
-              也可以进入 API 配置页填写手动 Key。
-            </p>
-            <div className="space-y-3">
-              <button
-                onClick={handleSelectKey}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg font-medium transition-colors w-full flex items-center justify-center gap-2"
-              >
-                <Key className="w-4 h-4" />
-                选择 AI Studio Key
-              </button>
-              <button
-                onClick={() => setView('apiConfig')}
-                className="bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-3 rounded-lg font-medium transition-colors w-full flex items-center justify-center gap-2"
-              >
-                <Key className="w-4 h-4" />
-                打开 API 配置
-              </button>
-            </div>
-            <p className="text-xs text-zinc-500 mt-6">
-              当前功能已接入 Gemini；火山云配置页已接入 API Key 和模型接入点字段。<br />
-              <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="text-indigo-400 hover:underline mt-1 inline-block">
-                了解 Gemini 计费
-              </a>
-            </p>
-          </div>
+          <NewApiAuthPanel apiSettings={apiSettings} setApiSettings={setApiSettings} onAuthenticated={() => setHasKey(true)} />
         </div>
         {startupSplashOverlay}
       </>

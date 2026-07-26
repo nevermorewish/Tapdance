@@ -6,6 +6,16 @@ import { applyMockApiSettings, restoreMockApiSettings } from '../src/services/mo
 
 test('applyMockApiSettings switches API settings to local mock endpoints and keeps a restorable snapshot', () => {
   const initial: ApiSettings = {
+    newapi: {
+      baseUrl: 'https://api.huanxing.ai',
+      apiKey: 'real-ak',
+      user: null,
+      textModel: 'gpt-5.6-sol',
+      imageModel: 'gpt-image-2',
+      videoModel: 'doubao-seedance-2.0',
+      tokens: [],
+      selectedTokenId: null,
+    },
     gemini: {
       apiKey: '',
       baseUrl: 'https://generativelanguage.googleapis.com',

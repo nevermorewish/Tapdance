@@ -7,8 +7,8 @@ import { homedir, tmpdir } from 'node:os';
 import crypto from 'node:crypto';
 import { createAppStateStore } from './appStateStore.mjs';
 import { buildAssetLibraryFileName } from './assetLibraryNaming.mjs';
-import { registerArkAssetOpenApiRoutes } from './arkAssetOpenApi.mjs';
 import { registerOpenAIImageBridgeRoutes } from './openaiImageBridgeRoutes.mjs';
+import { registerHuanxingProxyRoutes } from './huanxingProxyRoutes.mjs';
 import {
   getOpenAIAsyncTaskError,
   getOpenAIAsyncTaskIds,
@@ -58,7 +58,7 @@ app.use((request, response, next) => {
   }
   next();
 });
-registerArkAssetOpenApiRoutes(app);
+registerHuanxingProxyRoutes(app);
 
 function taskDir(submitId) {
   return join(bridgeRoot, 'tasks', submitId);

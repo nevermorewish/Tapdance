@@ -129,6 +129,34 @@ export interface AliyunApiConfig {
   customModels: CustomProviderModelConfig[];
 }
 
+export interface NewApiUser {
+  id: number;
+  username: string;
+  displayName?: string;
+  email?: string;
+  quota?: number;
+  usedQuota?: number;
+}
+
+export interface NewApiToken {
+  id: number;
+  name: string;
+  group: string;
+  status: number;
+  key: string;
+}
+
+export interface NewApiConfig {
+  baseUrl: string;
+  apiKey: string;
+  user: NewApiUser | null;
+  textModel: string;
+  imageModel: string;
+  videoModel: string;
+  tokens: NewApiToken[];
+  selectedTokenId: number | null;
+}
+
 export interface SeedanceApiConfig {
   enabled: boolean;
   apiModel: string;
@@ -187,6 +215,7 @@ export interface TosConfig {
 }
 
 export interface ApiSettings {
+  newapi: NewApiConfig;
   gemini: GeminiApiConfig;
   volcengine: VolcengineApiConfig;
   openai: OpenAIApiConfig;

@@ -87,7 +87,8 @@ function getRuntimeEnv() {
 function resolveOpenAIApiKey(apiSettings: ApiSettings) {
   const env = getRuntimeEnv();
   return (
-    apiSettings.openai.apiKey.trim()
+    apiSettings.newapi.apiKey.trim()
+    || apiSettings.openai.apiKey.trim()
     || env.VITE_OPENAI_API_KEY
     || env.OPENAI_API_KEY
     || ''
@@ -436,7 +437,7 @@ export async function generateOpenAIImages({
 
   const apiKey = resolveOpenAIApiKey(apiSettings) || (apiSettings.mockApi.enabled ? 'mock-openai-key' : '');
   if (!apiKey) {
-    throw new Error('OpenAI API Key 未配置，请先在 API 配置中填写。');
+    throw new Error('NewAPI 未登录，请先登录 NewAPI。');
   }
 
   const normalizedReferences = references
@@ -466,7 +467,7 @@ export async function generateOpenAIImages({
     {
       config: {
         apiKey,
-        baseUrl: resolveOpenAIBaseUrl(apiSettings.openai.baseUrl),
+        baseUrl: `${apiSettings.newapi.baseUrl.replace(/\/$/u, '')}/v1`,
       },
       request,
       references: normalizedReferences,
