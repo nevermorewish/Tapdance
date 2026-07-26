@@ -16,7 +16,6 @@ export function NewApiAuthPanel({ apiSettings, setApiSettings, onAuthenticated }
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
-  const [turnstile, setTurnstile] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -30,12 +29,12 @@ export function NewApiAuthPanel({ apiSettings, setApiSettings, onAuthenticated }
     try {
       const config = { ...apiSettings.newapi, baseUrl: baseUrl.trim() };
       if (mode === 'register') {
-        await registerNewApi(config, { username: username.trim(), password, email: email.trim() || undefined, verificationCode: verificationCode.trim() || undefined, turnstile: turnstile.trim() || undefined });
+        await registerNewApi(config, { username: username.trim(), password, email: email.trim() || undefined, verificationCode: verificationCode.trim() || undefined });
         setMode('login');
         setMessage('注册成功，请使用新账号登录。');
         return;
       }
-      const result = await loginToNewApi(config, username.trim(), password, turnstile.trim());
+      const result = await loginToNewApi(config, username.trim(), password);
       setApiSettings((previous) => applyNewApiAuth({ ...previous, newapi: { ...previous.newapi, baseUrl: baseUrl.trim() } }, result));
       setMessage(`已登录 NewAPI：${result.user.username}`);
       onAuthenticated?.();
@@ -59,7 +58,6 @@ export function NewApiAuthPanel({ apiSettings, setApiSettings, onAuthenticated }
           <label className="block text-sm text-zinc-300">邮箱（如服务端要求）<input className="studio-input mt-2" type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label className="block text-sm text-zinc-300">邮箱验证码（如服务端要求）<input className="studio-input mt-2" value={verificationCode} onChange={(event) => setVerificationCode(event.target.value)} /></label>
         </> : null}
-        <label className="block text-sm text-zinc-300">Turnstile 验证令牌（如服务端要求）<input className="studio-input mt-2" value={turnstile} onChange={(event) => setTurnstile(event.target.value)} /></label>
       </div>
       {message ? <div className="mt-4 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">{message}</div> : null}
       <button type="button" onClick={() => void submit()} disabled={busy} className="studio-button studio-button-primary mt-6 w-full justify-center">{busy ? '处理中…' : mode === 'login' ? '登录并连接' : '注册账号'}</button>

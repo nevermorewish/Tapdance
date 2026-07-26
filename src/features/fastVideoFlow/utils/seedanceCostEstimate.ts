@@ -1,6 +1,6 @@
 import seedanceCostDimensions from '../../../config/seedanceCostDimensions.json' with { type: 'json' };
 import type { FastReferenceVideo, FastVideoInput } from '../types/fastTypes.ts';
-import type { SeedanceDraft, SeedanceModelVersion } from '../../seedance/types.ts';
+import type { SeedanceApiModelKey, SeedanceDraft, SeedanceModelVersion } from '../../seedance/types.ts';
 import { getSeedanceApiModelKeyForCliModel } from '../../seedance/modelVersions.ts';
 
 type SeedanceEstimateResolution = SeedanceDraft['options']['resolution'];
@@ -19,7 +19,7 @@ type SeedanceEstimateDimensionConfig = {
 
 type SeedanceCostExecutionConfig = {
   executor: 'ark' | 'cli' | 'aliyun';
-  apiModelKey: 'standard' | 'fast';
+  apiModelKey: SeedanceApiModelKey;
   cliModelVersion: SeedanceModelVersion;
 };
 
@@ -82,7 +82,7 @@ export function getSeedancePricingKey(executionConfig: SeedanceCostExecutionConf
     return 'aliyun';
   }
   if (executionConfig.executor === 'ark') {
-    return executionConfig.apiModelKey;
+    return executionConfig.apiModelKey === 'mini' ? 'standard' : executionConfig.apiModelKey;
   }
   return getSeedanceApiModelKeyForCliModel(executionConfig.cliModelVersion);
 }

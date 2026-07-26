@@ -550,7 +550,9 @@ export function normalizeFastVideoProject(value?: NormalizableFastVideoProject |
     seedanceDraft: normalizedSeedanceDraft,
     executionConfig: {
       executor: executionExecutor,
-      apiModelKey: value?.executionConfig?.apiModelKey === 'fast' ? 'fast' : 'standard',
+      apiModelKey: value?.executionConfig?.apiModelKey === 'fast' || value?.executionConfig?.apiModelKey === 'mini'
+        ? value.executionConfig.apiModelKey
+        : 'standard',
       cliModelVersion: normalizeSeedanceModelVersion(
         value?.executionConfig?.cliModelVersion ?? (value as any)?.cliConfig?.modelVersion,
         base.executionConfig.cliModelVersion,

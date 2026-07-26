@@ -34,7 +34,9 @@ function getHeaders() {
 function resolveHuanxingVideoModel(modelId: string, modelKey: SeedanceApiModelKey): string {
   const normalized = modelId.trim().toLowerCase();
   if (!normalized || normalized === 'seedance') {
-    return modelKey === 'fast' ? 'doubao-seedance-2.0-fast' : 'doubao-seedance-2.0';
+    if (modelKey === 'fast') return 'doubao-seedance-2.0-fast';
+    if (modelKey === 'mini') return 'doubao-seedance-2.0-mini';
+    return 'doubao-seedance-2.0';
   }
   if (normalized === 'seedance-fast' || normalized === 'seedance2.0fast') {
     return 'doubao-seedance-2.0-fast';
@@ -74,6 +76,9 @@ async function requestJson(path: string, init: RequestInit) {
 }
 
 function resolveModelId(modelKey: SeedanceApiModelKey) {
+  if (modelKey === 'mini') {
+    return 'doubao-seedance-2.0-mini';
+  }
   const config = getSeedanceConfig();
   const modelId = (modelKey === 'fast' ? config.fastApiModel : config.apiModel).trim();
   if (!modelId) {

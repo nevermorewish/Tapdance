@@ -1278,8 +1278,9 @@ export default function App() {
               onChange={(event) => handleUpdateFastExecutionConfig({ apiModelKey: event.target.value as Project['fastFlow']['executionConfig']['apiModelKey'] })}
               className="studio-select h-12"
             >
-              <option value="standard">Seedance 2.0</option>
-              <option value="fast">Seedance 2.0 Fast</option>
+              <option value="standard">doubao-seedance-2.0</option>
+              <option value="fast">doubao-seedance-2.0-fast</option>
+              <option value="mini">doubao-seedance-2.0-mini</option>
             </StudioSelect>
           )}
           renderImageModelPanel={(sceneId) => renderCompactOperationModelPanel(`fast-scene-image-${sceneId}`, 'image', undefined, { layout: 'inline' })}

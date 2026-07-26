@@ -74,9 +74,9 @@ export function ApiConfigPage({ apiSettings, setApiSettings, onRestoreDefaults }
           <label className="block text-sm text-zinc-300">文本模型<input className="studio-input mt-2" value={config.textModel} placeholder="gpt-5.6-sol" onChange={(event) => update({ textModel: event.target.value })} /></label>
           <label className="block text-sm text-zinc-300">生图模型<input className="studio-input mt-2" value={config.imageModel} placeholder="gpt-image-2" onChange={(event) => update({ imageModel: event.target.value })} /></label>
           <label className="block text-sm text-zinc-300">视频模型<select className="studio-input mt-2" value={config.videoModel} onChange={(event) => update({ videoModel: event.target.value })}>
-            <option value="doubao-seedance-2.0">doubao-seedance-2.0（标准）</option>
-            <option value="doubao-seedance-2.0-fast">doubao-seedance-2.0-fast（快速）</option>
-            <option value="doubao-seedance-2.0-mini">doubao-seedance-2.0-mini（轻量）</option>
+            <option value="doubao-seedance-2.0">doubao-seedance-2.0</option>
+            <option value="doubao-seedance-2.0-fast">doubao-seedance-2.0-fast</option>
+            <option value="doubao-seedance-2.0-mini">doubao-seedance-2.0-mini</option>
           </select></label>
         </div>
         <label className="mt-5 block text-sm text-zinc-300">NewAPI 令牌

@@ -6,7 +6,7 @@ import type { SeedanceHealth } from '../types/fastTypes.ts';
 import { fetchSeedanceHealth } from '../services/seedanceBridgeClient.ts';
 import { SEEDANCE_MODEL_VERSIONS } from '../../seedance/modelVersions.ts';
 import { compileSeedanceRequest } from '../../seedance/services/seedanceDraft.ts';
-import type { SeedanceDraft } from '../../seedance/types.ts';
+import type { SeedanceApiModelKey, SeedanceDraft } from '../../seedance/types.ts';
 
 type SeedanceLogEntry = {
   operation: string;
@@ -33,12 +33,17 @@ export function useSeedanceRuntime({
   const [seedanceHealth, setSeedanceHealth] = useState<SeedanceHealth | null>(null);
   const [isRefreshingSeedanceHealth, setIsRefreshingSeedanceHealth] = useState(false);
 
-  const getSeedanceArkModelMeta = (modelKey: 'standard' | 'fast' = project.fastFlow.executionConfig.apiModelKey) => (
+  const getSeedanceArkModelMeta = (modelKey: SeedanceApiModelKey = project.fastFlow.executionConfig.apiModelKey) => (
     modelKey === 'fast'
       ? {
         sourceId: 'seedance.fastApiModel' as const,
         modelName: apiSettings.seedance.fastApiModel.trim(),
       }
+      : modelKey === 'mini'
+        ? {
+          sourceId: 'seedance.apiModel' as const,
+          modelName: 'doubao-seedance-2.0-mini',
+        }
       : {
         sourceId: 'seedance.apiModel' as const,
         modelName: apiSettings.seedance.apiModel.trim(),
@@ -77,7 +82,7 @@ export function useSeedanceRuntime({
     }
   };
 
-  const buildSeedanceSubmitLogRequest = (draft: SeedanceDraft, executor: 'ark' | 'cli', apiModelKey = project.fastFlow.executionConfig.apiModelKey) => {
+  const buildSeedanceSubmitLogRequest = (draft: SeedanceDraft, executor: 'ark' | 'cli', apiModelKey: SeedanceApiModelKey = project.fastFlow.executionConfig.apiModelKey) => {
     const draftSnapshot = buildSeedanceDraftLogSnapshot(draft);
     if (executor === 'ark') {
       const arkModelMeta = getSeedanceArkModelMeta(apiModelKey);

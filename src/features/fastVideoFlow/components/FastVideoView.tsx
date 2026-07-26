@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2, Circle, Clock3, Image as ImageIcon, Play, 
 import { motion } from 'motion/react';
 
 import type { FastSceneDraft, FastVideoInput, FastVideoPromptDraft, SeedanceHealth, SeedanceTask } from '../types/fastTypes.ts';
-import type { SeedanceDraft, SeedanceModelVersion, SeedanceOverlayTemplateId } from '../../seedance/types.ts';
+import type { SeedanceApiModelKey, SeedanceDraft, SeedanceModelVersion, SeedanceOverlayTemplateId } from '../../seedance/types.ts';
 import { SEEDANCE_MODEL_VERSIONS } from '../../seedance/modelVersions.ts';
 import { FAST_FLOW_TEMPLATE_IDS, SEEDANCE_TEMPLATE_REGISTRY } from '../../seedance/config/seedanceTemplateRegistry.ts';
 import { ClickPopover } from '../../../components/studio/ClickPopover.tsx';
@@ -1061,7 +1061,7 @@ type Props = {
   task: SeedanceTask;
   executionConfig: {
     executor: 'ark' | 'cli' | 'aliyun';
-    apiModelKey: 'standard' | 'fast';
+    apiModelKey: SeedanceApiModelKey;
     cliModelVersion: SeedanceModelVersion;
     pollIntervalSec: number;
     videoResolution: '480p' | '720p' | '1080p';
@@ -1979,8 +1979,9 @@ export function FastVideoView({
                     onChange={(event) => onUpdateExecutionConfig({ apiModelKey: event.target.value as Props['executionConfig']['apiModelKey'] })}
                     className={controlClassName}
                   >
-                    <option value="standard">Seedance 2.0</option>
-                    <option value="fast">Seedance 2.0 Fast</option>
+                    <option value="standard">doubao-seedance-2.0</option>
+                    <option value="fast">doubao-seedance-2.0-fast</option>
+                    <option value="mini">doubao-seedance-2.0-mini</option>
                   </StudioSelect>
                 </label>
               ) : executionConfig.executor === 'aliyun' ? (

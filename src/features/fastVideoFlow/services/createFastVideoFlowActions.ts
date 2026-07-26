@@ -29,7 +29,7 @@ import { fetchSeedanceTask, submitSeedanceTask } from './seedanceBridgeClient.ts
 import { fetchHappyHorseTask, submitHappyHorseTask } from './aliyunHappyHorseService.ts';
 import { createSeedanceTask, deleteSeedanceTask, getSeedanceTask } from '../../seedance/services/seedanceApiService.ts';
 import { validateSeedanceDraft } from '../../seedance/services/seedanceDraft.ts';
-import type { SeedanceBaseTemplateId, SeedanceDraft, SeedanceExecutorId } from '../../seedance/types.ts';
+import type { SeedanceApiModelKey, SeedanceBaseTemplateId, SeedanceDraft, SeedanceExecutorId } from '../../seedance/types.ts';
 import { SEEDANCE_TEMPLATE_REGISTRY } from '../../seedance/config/seedanceTemplateRegistry.ts';
 import { FAST_VIDEO_PROMPT_CONFIG } from '../../../config/fastVideoPrompts.ts';
 import {
@@ -105,11 +105,11 @@ type FastVideoFlowActionDeps = {
   getTextModelSourceId: () => ModelSourceId;
   getOperationSourceId: (operationKey: string, category: 'text' | 'image' | 'video') => ModelSourceId;
   getOperationModelName: (operationKey: string, category: 'text' | 'image' | 'video') => string;
-  getSeedanceArkModelMeta: (modelKey?: 'standard' | 'fast') => {
+  getSeedanceArkModelMeta: (modelKey?: SeedanceApiModelKey) => {
     sourceId: ModelInvocationLogEntry['sourceId'];
     modelName: string;
   };
-  buildSeedanceSubmitLogRequest: (draft: SeedanceDraft, executor: SeedanceExecutorId, apiModelKey?: 'standard' | 'fast') => Record<string, unknown>;
+  buildSeedanceSubmitLogRequest: (draft: SeedanceDraft, executor: SeedanceExecutorId, apiModelKey?: SeedanceApiModelKey) => Record<string, unknown>;
   appendSeedanceLog: (entry: SeedanceLogEntry) => void;
   onCliConcurrencyLimit?: (input: SeedanceCliQueueEnqueueInput) => void;
 };
