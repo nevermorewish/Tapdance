@@ -58,6 +58,7 @@ import { useCreativeFlowUiState } from './features/creativeFlow/hooks/useCreativ
 import { useCreativeVideoPolling } from './features/creativeFlow/hooks/useCreativeVideoPolling.ts';
 import { ApiConfigWorkspace } from './features/apiConfig/components/ApiConfigWorkspace.tsx';
 import { NewApiAuthPanel } from './features/apiConfig/components/NewApiAuthPanel.tsx';
+import { isNewApiAuthenticated } from './services/newApiAuth.ts';
 import { useApiSettingsStorage } from './features/apiConfig/hooks/useApiSettingsStorage.ts';
 import { ImagePreviewModal } from './components/modals/ImagePreviewModal.tsx';
 import { SeedanceErrorModal, type SeedanceErrorModalAction, type SeedanceErrorModalPayload, type SeedanceErrorModalState } from './components/modals/SeedanceErrorModal.tsx';
@@ -640,11 +641,8 @@ export default function App() {
   });
 
   useEffect(() => {
-    const checkKey = async () => {
-      setHasKey(Boolean(apiSettings.newapi.apiKey.trim()));
-    };
-    void checkKey();
-  }, [apiSettings.newapi.apiKey]);
+    setHasKey(isNewApiAuthenticated(apiSettings.newapi));
+  }, [apiSettings.newapi.apiKey, apiSettings.newapi.selectedTokenId, apiSettings.newapi.tokens, apiSettings.newapi.user]);
 
   useEffect(() => {
     if (!['apiConfig', 'fastInput', 'fastStoryboard', 'fastVideo'].includes(view)) {
@@ -1274,6 +1272,16 @@ export default function App() {
           isCancellingFastVideoTask={isCancellingFastVideoTask}
           isRegeneratingFastVideoPrompt={isRegeneratingFastVideoPrompt}
           operationPanel={renderCompactOperationModelPanel('fast-plan', 'text', undefined, { showCategoryTag: false })}
+          videoModelPanel={(
+            <StudioSelect
+              value={project.fastFlow.executionConfig.apiModelKey}
+              onChange={(event) => handleUpdateFastExecutionConfig({ apiModelKey: event.target.value as Project['fastFlow']['executionConfig']['apiModelKey'] })}
+              className="studio-select h-12"
+            >
+              <option value="standard">Seedance 2.0</option>
+              <option value="fast">Seedance 2.0 Fast</option>
+            </StudioSelect>
+          )}
           renderImageModelPanel={(sceneId) => renderCompactOperationModelPanel(`fast-scene-image-${sceneId}`, 'image', undefined, { layout: 'inline' })}
           onRefreshSeedanceHealth={() => void refreshSeedanceHealth()}
           onChangeFastInput={handleFastInputChange}

@@ -552,7 +552,7 @@ function normalizeApiSettings(settings: ApiSettings): ApiSettings {
     .trim().replace(/\/+$/u, '').replace(/\/v1$/iu, '') || DEFAULT_NEWAPI_BASE_URL;
   const normalizedTokens = Array.isArray(settings.newapi?.tokens)
     ? settings.newapi.tokens.filter((token: any) => token && Number.isFinite(Number(token.id)) && typeof token.key === 'string').map((token: any) => ({
-      id: Number(token.id), name: String(token.name || `令牌 ${token.id}`), group: String(token.group || 'default'), status: Number(token.status || 1), key: String(token.key),
+      id: Number(token.id), name: String(token.name || `令牌 ${token.id}`), group: String(token.group || 'default'), status: Number(token.status ?? 1), key: String(token.key),
     }))
     : [];
   const selectedTokenId = Number.isFinite(Number(settings.newapi?.selectedTokenId)) ? Number(settings.newapi.selectedTokenId) : null;

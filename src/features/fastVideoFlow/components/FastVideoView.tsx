@@ -1950,16 +1950,16 @@ export function FastVideoView({
           </section>
 
           <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col items-start gap-1 2xl:flex-row 2xl:items-center 2xl:justify-between 2xl:gap-3">
               <div className="text-white font-semibold">执行参数</div>
-              <div className="text-right text-xs text-zinc-500">
+              <div className="break-words text-left text-xs leading-5 text-zinc-500 2xl:text-right">
                 {(executionConfig.executor === 'ark' ? 'Ark API' : executionConfig.executor === 'aliyun' ? '阿里云' : '本地 CLI')}
                 {' · '}
                 {`画幅：${seedanceDraft.options.ratio} · 时长：${seedanceDraft.options.duration || 10}s · ${seedanceDraft.options.resolution}`}
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-3">
-              <label className="block">
+            <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+              <label className="block min-w-0">
                 <span className={fieldLabelClassName}>执行器</span>
                 <StudioSelect
                   value={executionConfig.executor}
@@ -1972,7 +1972,7 @@ export function FastVideoView({
                 </StudioSelect>
               </label>
               {executionConfig.executor === 'ark' ? (
-                <label className="block">
+                <label className="block min-w-0">
                   <span className={fieldLabelClassName}>Ark 模型</span>
                   <StudioSelect
                     value={executionConfig.apiModelKey}
@@ -1984,7 +1984,7 @@ export function FastVideoView({
                   </StudioSelect>
                 </label>
               ) : executionConfig.executor === 'aliyun' ? (
-                <label className="block">
+                <label className="block min-w-0">
                   <span className={fieldLabelClassName}>模型</span>
                   <div className="h-10 px-3 flex items-center bg-zinc-800 border border-zinc-700/50 rounded-xl text-zinc-300">
                     {seedanceDraft.baseTemplateId === 'multi_image_reference'
@@ -1995,7 +1995,7 @@ export function FastVideoView({
                   </div>
                 </label>
               ) : (
-                <label className="block">
+                <label className="block min-w-0">
                   <span className={fieldLabelClassName}>CLI 模型版本</span>
                   <StudioSelect
                     value={executionConfig.cliModelVersion}
@@ -2008,7 +2008,7 @@ export function FastVideoView({
                   </StudioSelect>
                 </label>
               )}
-              <label className="block">
+              <label className="col-span-full block min-w-0">
                 <span className={fieldLabelClassName}>功能模板</span>
                 <StudioSelect
                   value={seedanceDraft.baseTemplateId}
@@ -2020,7 +2020,7 @@ export function FastVideoView({
                   ))}
                 </StudioSelect>
               </label>
-              <label className="block">
+              <label className="block min-w-0">
                 <span className={fieldLabelClassName}>画幅</span>
                 <StudioSelect
                   value={seedanceDraft.options.ratio}
@@ -2032,7 +2032,7 @@ export function FastVideoView({
                   ))}
                 </StudioSelect>
               </label>
-              <label className="block">
+              <label className="block min-w-0">
                 <span className={fieldLabelClassName}>时长(4-15s)</span>
                 <input
                   type="number"
@@ -2043,7 +2043,7 @@ export function FastVideoView({
                   className={controlClassName}
                 />
               </label>
-              <label className="block">
+              <label className="block min-w-0">
                 <span className={fieldLabelClassName}>分辨率</span>
                 <StudioSelect
                   value={seedanceDraft.options.resolution}
@@ -2055,13 +2055,13 @@ export function FastVideoView({
                   <option value="1080p">1080p</option>
                 </StudioSelect>
               </label>
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-sm text-zinc-300 md:col-span-2 xl:col-span-3">
+              <div className="col-span-full rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-sm text-zinc-300">
                 <div className="flex items-baseline gap-2 overflow-hidden">
                   <span className="shrink-0 font-medium text-white">{activeTemplate.title}</span>
                   <span className="truncate text-zinc-400">{activeTemplate.description}</span>
                 </div>
               </div>
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 space-y-3 md:col-span-2 xl:col-span-3">
+              <div className="col-span-full space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className={fieldLabelClassName}>叠加能力</div>
@@ -2121,7 +2121,7 @@ export function FastVideoView({
                 </div>
               </div>
               {draftIssues.length > 0 ? (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 md:col-span-2 xl:col-span-3">
+                <div className="col-span-full rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                   {draftIssues.map((issue) => (
                     <div key={issue}>{issue}</div>
                   ))}

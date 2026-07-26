@@ -27,6 +27,7 @@ type FastFlowWorkspaceProps = {
   isCancellingFastVideoTask: boolean;
   isRegeneratingFastVideoPrompt: boolean;
   operationPanel: ReactNode;
+  videoModelPanel: ReactNode;
   renderImageModelPanel: (sceneId: string) => ReactNode;
   onRefreshSeedanceHealth: () => void | Promise<void>;
   onChangeFastInput: (patch: Partial<FastVideoInput>) => void;
@@ -89,6 +90,7 @@ export function FastFlowWorkspace({
   isCancellingFastVideoTask,
   isRegeneratingFastVideoPrompt,
   operationPanel,
+  videoModelPanel,
   renderImageModelPanel,
   onRefreshSeedanceHealth,
   onChangeFastInput,
@@ -165,6 +167,7 @@ export function FastFlowWorkspace({
         onTosUploadConfig={tosConfig}
         onOpenApiConfig={onOpenApiConfig}
         operationPanel={operationPanel}
+        videoModelPanel={videoModelPanel}
         hideHeader
       />
     );

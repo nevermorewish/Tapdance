@@ -105,6 +105,7 @@ type Props = {
   onTosUploadConfig?: import('../../../types.ts').TosConfig;
   onOpenApiConfig?: () => void;
   operationPanel?: ReactNode;
+  videoModelPanel?: ReactNode;
   hideHeader?: boolean;
 };
 
@@ -444,6 +445,7 @@ export function FastInputView({
   onTosUploadConfig,
   onOpenApiConfig,
   operationPanel,
+  videoModelPanel,
   hideHeader = false,
 }: Props) {
   const [portraitPickerTargetId, setPortraitPickerTargetId] = useState<string | null>(null);
@@ -773,7 +775,7 @@ export function FastInputView({
             </label>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(8.5rem,1fr)_minmax(7rem,0.78fr)_minmax(9.5rem,1fr)_minmax(7rem,0.78fr)_minmax(16rem,1.55fr)]">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(8.5rem,1fr)_minmax(7rem,0.78fr)_minmax(9.5rem,1fr)_minmax(7rem,0.78fr)]">
             <label className="block">
               <span className="text-sm font-medium text-[var(--studio-text)]">画幅比例</span>
               <StudioSelect
@@ -853,15 +855,28 @@ export function FastInputView({
               </StudioSelect>
             </label>
 
-            {operationPanel ? (
+          </div>
+
+          {operationPanel || videoModelPanel ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {operationPanel ? (
               <div className="min-w-0">
                 <div className="text-sm font-medium text-[var(--studio-text)]">文本模型选择</div>
                 <div className="mt-2">
                   {operationPanel}
                 </div>
               </div>
-            ) : null}
-          </div>
+              ) : null}
+              {videoModelPanel ? (
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-[var(--studio-text)]">视频模型选择</div>
+                  <div className="mt-2">
+                    {videoModelPanel}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </StudioPanel>
 
         <aside className="min-w-0 space-y-6">

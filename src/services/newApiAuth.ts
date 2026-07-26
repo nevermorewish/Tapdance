@@ -3,6 +3,21 @@ import { buildSeedanceBridgeRequestUrl } from './seedanceBridgeUrl.ts';
 
 export type NewApiAuthResult = { apiKey: string; user: NewApiUser; tokens: NewApiToken[]; selectedTokenId: number | null };
 
+export function isNewApiAuthenticated(config: Pick<NewApiConfig, 'apiKey' | 'user' | 'tokens' | 'selectedTokenId'>) {
+  const apiKey = String(config.apiKey || '').trim();
+  const userId = Number(config.user?.id);
+  if (!apiKey || !Number.isFinite(userId) || userId <= 0 || !Array.isArray(config.tokens) || config.tokens.length === 0) {
+    return false;
+  }
+
+  const selectedToken = config.tokens.find((token) => token.id === config.selectedTokenId);
+  return Boolean(
+    selectedToken
+    && selectedToken.status !== 0
+    && String(selectedToken.key || '').trim() === apiKey,
+  );
+}
+
 async function request<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(buildSeedanceBridgeRequestUrl(path), {
     method: 'POST',

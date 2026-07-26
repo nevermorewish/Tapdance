@@ -4,6 +4,7 @@ import type { ModelInvocationLogEntry } from '../../../services/modelInvocationL
 import type { SeedanceHealth } from '../../fastVideoFlow/types/fastTypes.ts';
 import type { MockApiServerStatus } from '../../../services/mockApiConfig.ts';
 import type { ModelProviderId, ModelRole } from '../../../services/apiConfig.ts';
+import { isNewApiAuthenticated } from '../../../services/newApiAuth.ts';
 
 type Props = {
   apiSettings: ApiSettings;
@@ -31,6 +32,7 @@ type Props = {
 
 export function ApiConfigPage({ apiSettings, setApiSettings, onRestoreDefaults }: Props) {
   const config = apiSettings.newapi;
+  const isAuthenticated = isNewApiAuthenticated(config);
   const update = (patch: Partial<typeof config>) => setApiSettings((previous) => {
     const next = { ...previous.newapi, ...patch };
     return {
@@ -84,8 +86,12 @@ export function ApiConfigPage({ apiSettings, setApiSettings, onRestoreDefaults }
           <span className="mt-1 block text-xs text-zinc-500">登录后默认选择 `default` 分组令牌；切换令牌会同时应用到文本、图片、视频和素材库。</span>
         </label>
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">已连接：{config.user?.username || 'NewAPI 用户'}</span>
-          <button type="button" onClick={logout} className="studio-button studio-button-secondary px-4 py-2 text-xs">退出登录</button>
+          {isAuthenticated ? (
+            <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">已连接：{config.user?.username}</span>
+          ) : (
+            <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-xs text-amber-200">未登录 NewAPI</span>
+          )}
+          {isAuthenticated ? <button type="button" onClick={logout} className="studio-button studio-button-secondary px-4 py-2 text-xs">退出登录</button> : null}
           <button type="button" onClick={onRestoreDefaults} className="studio-button studio-button-secondary px-4 py-2 text-xs">恢复默认模型</button>
         </div>
       </div>
