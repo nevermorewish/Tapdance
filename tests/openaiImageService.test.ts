@@ -48,6 +48,84 @@ test('generateOpenAIImages calls bridge generations without references', async (
   }
 });
 
+test('generateOpenAIImages does not send aspect_ratio with an explicit GPT Image size', async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{ input: string; body: any }> = [];
+
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ input: String(input), body: JSON.parse(String(init?.body || '{}')) });
+    return new Response(JSON.stringify({ data: [{ b64_json: mockPngBase64 }] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }) as typeof fetch;
+
+  try {
+    await generateOpenAIImages({
+      prompt: 'wide image',
+      modelName: 'gpt-image-2',
+      aspectRatio: '16:9',
+      resolution: '2K',
+      size: '2048x1152',
+      apiSettings: {
+        ...defaultApiSettings,
+        openai: {
+          ...defaultApiSettings.openai,
+          apiKey: 'test-key',
+        },
+        seedance: {
+          ...defaultApiSettings.seedance,
+          bridgeUrl: 'http://127.0.0.1:3210/api/seedance',
+        },
+      },
+    });
+
+    assert.equal(calls[0].body.request.size, '2048x1152');
+    assert.equal(calls[0].body.request.resolution, '2K');
+    assert.equal('aspect_ratio' in calls[0].body.request, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('generateOpenAIImages keeps aspect_ratio when GPT Image size is auto', async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{ input: string; body: any }> = [];
+
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ input: String(input), body: JSON.parse(String(init?.body || '{}')) });
+    return new Response(JSON.stringify({ data: [{ b64_json: mockPngBase64 }] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }) as typeof fetch;
+
+  try {
+    await generateOpenAIImages({
+      prompt: 'ratio image',
+      modelName: 'gpt-image-2',
+      aspectRatio: '9:16',
+      size: 'auto',
+      apiSettings: {
+        ...defaultApiSettings,
+        openai: {
+          ...defaultApiSettings.openai,
+          apiKey: 'test-key',
+        },
+        seedance: {
+          ...defaultApiSettings.seedance,
+          bridgeUrl: 'http://127.0.0.1:3210/api/seedance',
+        },
+      },
+    });
+
+    assert.equal('size' in calls[0].body.request, false);
+    assert.equal(calls[0].body.request.aspect_ratio, '9:16');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('generateOpenAIImages calls bridge edits with references', async () => {
   const originalFetch = globalThis.fetch;
   const calls: Array<{ input: string; body: any }> = [];

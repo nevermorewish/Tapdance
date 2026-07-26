@@ -456,13 +456,27 @@ export async function generateOpenAIImages({
     }))
     .filter((reference) => reference.sourceUrl);
   const hasReferences = normalizedReferences.length > 0;
-  const sizeFallbackAspectRatio = mapOpenAIImageSizeToAspectRatio(size);
+  const model = modelName?.trim() || apiSettings.openai.imageModel || 'gpt-image-2';
+  const normalizedSize = String(size || '').trim();
+  const isOfficialGptImageModel = /^gpt-image-2(?:$|[-:])/iu.test(model);
+  // The official GPT Image API rejects requests that contain both `size` and
+  // `aspect_ratio`. Keep the UI's ratio for local state, but express it using
+  // exactly one request field. When a concrete size is available it is the
+  // authoritative value (it already encodes the selected ratio and 1K/2K/4K
+  // resolution); when size is still `auto`, retain the ratio instead.
+  const shouldSendSize = Boolean(normalizedSize)
+    && !(isOfficialGptImageModel && normalizedSize.toLowerCase() === 'auto' && Boolean(aspectRatio));
+  const shouldSendAspectRatio = Boolean(aspectRatio)
+    && !(isOfficialGptImageModel && shouldSendSize);
+  const sizeFallbackAspectRatio = shouldSendSize
+    ? mapOpenAIImageSizeToAspectRatio(normalizedSize)
+    : undefined;
   const request = {
-    model: modelName?.trim() || apiSettings.openai.imageModel || 'gpt-image-2',
+    model,
     prompt: normalizedPrompt,
     n: normalizeCount(n),
-    size,
-    ...(aspectRatio ? { aspect_ratio: aspectRatio } : {}),
+    ...(shouldSendSize ? { size: normalizedSize } : {}),
+    ...(shouldSendAspectRatio ? { aspect_ratio: aspectRatio } : {}),
     ...(resolution ? { resolution } : {}),
     quality,
     output_format: outputFormat,

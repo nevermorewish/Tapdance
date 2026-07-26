@@ -191,6 +191,18 @@ function normalizeOpenAIJsonRequest(body) {
     result.output_compression = Math.max(0, Math.min(100, Math.round(compression)));
   }
 
+  // Official GPT Image models require `size` and `aspect_ratio` to be
+  // mutually exclusive. Older clients may still send both, so normalize the
+  // payload at the bridge boundary as a safety net. A concrete size wins;
+  // with `auto`, retain the explicit aspect ratio instead.
+  if (/^gpt-image-2(?:$|[-:])/iu.test(model) && result.size && result.aspect_ratio) {
+    if (result.size.toLowerCase() === 'auto') {
+      delete result.size;
+    } else {
+      delete result.aspect_ratio;
+    }
+  }
+
   return result;
 }
 
