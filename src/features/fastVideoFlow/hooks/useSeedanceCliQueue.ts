@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { ApiSettings, Project } from '../../../types.ts';
-import { saveMediaToAssetLibrary } from '../../../services/assetLibrary.ts';
-import { normalizeProjectGroupName } from '../../../services/projectGroups.ts';
 import { loadPersistedAppState, savePersistedAppState } from '../../app/services/appStateStore.ts';
 import { submitSeedanceTask, fetchSeedanceTask } from '../services/seedanceBridgeClient.ts';
 import {
@@ -215,19 +213,6 @@ export function useSeedanceCliQueue({
     return item;
   }, [markProjectQueued]);
 
-  const persistQueueVideo = useCallback(async (item: SeedanceCliQueueItem, sourceUrl: string) => {
-    const savedFile = await saveMediaToAssetLibrary({
-      sourceUrl,
-      kind: 'video',
-      assetId: `${item.projectId}:fast-task:video`,
-      title: '极速视频成片',
-      groupName: normalizeProjectGroupName(item.groupName) || '未分组',
-      projectName: item.projectName || '未命名项目',
-      baseUrl: apiSettings.seedance.bridgeUrl,
-    });
-    return savedFile.url;
-  }, [apiSettings.seedance.bridgeUrl]);
-
   const startQueuedItem = useCallback(async (item: SeedanceCliQueueItem) => {
     const nowIso = new Date().toISOString();
     patchQueueItem(item.id, (current) => ({
@@ -369,7 +354,6 @@ export function useSeedanceCliQueue({
 
     if (normalizedStatus === 'completed') {
       const latestVideoUrl = result.downloadedFiles?.[0]?.url || '';
-      const persistedUrl = latestVideoUrl ? await persistQueueVideo(item, latestVideoUrl) : '';
       patchQueueItem(item.id, (current) => ({
         ...current,
         status: 'completed',
@@ -390,7 +374,7 @@ export function useSeedanceCliQueue({
             remoteStatus: result.genStatus,
             queueStatus: '本地队列任务完成',
             raw: result.raw,
-            videoUrl: persistedUrl || current.fastFlow.task.videoUrl,
+            videoUrl: latestVideoUrl || current.fastFlow.task.videoUrl,
             videoStorageKey: '',
             error: '',
             lastCheckedAt: nowIso,
@@ -457,7 +441,7 @@ export function useSeedanceCliQueue({
         },
       },
     }));
-  }, [apiSettings.seedance.bridgeUrl, notify, patchQueueItem, persistQueueVideo, updateProjectRecord, useMockMode]);
+  }, [apiSettings.seedance.bridgeUrl, notify, patchQueueItem, updateProjectRecord, useMockMode]);
 
   const processQueue = useCallback(async () => {
     if (!isLoaded || processingRef.current) {

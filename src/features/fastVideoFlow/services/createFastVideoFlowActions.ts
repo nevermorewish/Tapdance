@@ -1229,13 +1229,7 @@ export function createFastVideoFlowActions({
         });
 
         const latestVideoUrl = result.downloadedFiles?.[0]?.url || '';
-        const persistedVideo = result.genStatus === 'completed' && latestVideoUrl
-          ? await persistGeneratedMediaUrl(latestVideoUrl, {
-            kind: 'video',
-            assetId: `${targetProjectId}:fast-task:video`,
-            title: '极速视频成片',
-          })
-          : undefined;
+        const persistedVideoUrl = result.genStatus === 'completed' ? latestVideoUrl : '';
         const nowIso = new Date().toISOString();
 
         updateFastFlowByProjectId(targetProjectId, (current) => ({
@@ -1250,7 +1244,7 @@ export function createFastVideoFlowActions({
             queueStatus: result.raw?.output?.task_status || current.task.queueStatus,
             raw: result.raw,
             error: result.genStatus === 'failed' ? (result.error?.message || '生成失败') : '',
-            videoUrl: persistedVideo?.url || current.task.videoUrl,
+            videoUrl: persistedVideoUrl || current.task.videoUrl,
             lastCheckedAt: nowIso,
             finishedAt: resolveSeedanceFinishedAt(result.genStatus as any, current.task.finishedAt, nowIso),
           },
@@ -1271,20 +1265,8 @@ export function createFastVideoFlowActions({
 
         const normalizedStatus = mapRemoteSeedanceStatus(result.status);
         const shouldPersistOutputs = normalizedStatus === 'completed';
-        const persistedVideo = shouldPersistOutputs && result.videoUrl
-          ? await persistGeneratedMediaUrl(result.videoUrl, {
-            kind: 'video',
-            assetId: `${targetProjectId}:fast-task:video`,
-            title: '极速视频成片',
-          })
-          : undefined;
-        const persistedLastFrame = shouldPersistOutputs && result.lastFrameUrl
-          ? await persistGeneratedMediaUrl(result.lastFrameUrl, {
-            kind: 'image',
-            assetId: `${targetProjectId}:fast-task:last-frame`,
-            title: '极速视频尾帧',
-          })
-          : undefined;
+        const videoUrl = shouldPersistOutputs ? result.videoUrl : '';
+        const lastFrameUrl = shouldPersistOutputs ? result.lastFrameUrl : '';
         const nowIso = new Date().toISOString();
 
         updateFastFlowByProjectId(targetProjectId, (current) => ({
@@ -1299,8 +1281,8 @@ export function createFastVideoFlowActions({
             queueStatus: result.status || current.task.queueStatus,
             raw: result.raw,
             error: normalizedStatus === 'failed' ? (result.error?.message || 'Seedance 任务失败，请查看日志。') : '',
-            videoUrl: persistedVideo?.url || current.task.videoUrl,
-            lastFrameUrl: persistedLastFrame?.url || current.task.lastFrameUrl,
+            videoUrl: videoUrl || current.task.videoUrl,
+            lastFrameUrl: lastFrameUrl || current.task.lastFrameUrl,
             videoStorageKey: '',
             lastFrameStorageKey: '',
             lastCheckedAt: nowIso,
@@ -1321,13 +1303,6 @@ export function createFastVideoFlowActions({
           response: result,
         });
         const normalizedStatus = mapRemoteSeedanceStatus(result.status);
-        const shouldPersistOutputs = normalizedStatus === 'completed';
-        const persistedVideo = shouldPersistOutputs && result.videoUrl
-          ? await persistGeneratedMediaUrl(result.videoUrl, { kind: 'video', assetId: `${targetProjectId}:fast-task:video`, title: '极速视频成片' })
-          : undefined;
-        const persistedLastFrame = shouldPersistOutputs && result.lastFrameUrl
-          ? await persistGeneratedMediaUrl(result.lastFrameUrl, { kind: 'image', assetId: `${targetProjectId}:fast-task:last-frame`, title: '极速视频尾帧' })
-          : undefined;
         const nowIso = new Date().toISOString();
         updateFastFlowByProjectId(targetProjectId, (current) => ({
           ...current,
@@ -1338,8 +1313,8 @@ export function createFastVideoFlowActions({
             queueStatus: result.status || current.task.queueStatus,
             raw: result.raw,
             error: normalizedStatus === 'failed' ? (result.error?.message || 'OpenAI 视频任务失败，请查看日志。') : '',
-            videoUrl: persistedVideo?.url || current.task.videoUrl,
-            lastFrameUrl: persistedLastFrame?.url || current.task.lastFrameUrl,
+            videoUrl: result.videoUrl || current.task.videoUrl,
+            lastFrameUrl: result.lastFrameUrl || current.task.lastFrameUrl,
             videoStorageKey: '', lastFrameStorageKey: '', lastCheckedAt: nowIso,
             finishedAt: resolveSeedanceFinishedAt(normalizedStatus, current.task.finishedAt, nowIso),
           },
@@ -1358,13 +1333,7 @@ export function createFastVideoFlowActions({
 
       const normalizedStatus = mapRemoteSeedanceStatus(result.genStatus);
       const latestVideoUrl = result.downloadedFiles?.[0]?.url || '';
-      const persistedVideo = normalizedStatus === 'completed' && latestVideoUrl
-        ? await persistGeneratedMediaUrl(latestVideoUrl, {
-          kind: 'video',
-          assetId: `${targetProjectId}:fast-task:video`,
-          title: '极速视频成片',
-        })
-        : undefined;
+      const videoUrl = latestVideoUrl;
       const nowIso = new Date().toISOString();
 
       updateFastFlowByProjectId(targetProjectId, (current) => ({
@@ -1379,7 +1348,7 @@ export function createFastVideoFlowActions({
           queueStatus: result.queueInfo?.queue_status || current.task.queueStatus,
           raw: result.raw,
           error: normalizedStatus === 'failed' ? buildSeedanceCliFailure(result.raw).detail : '',
-          videoUrl: persistedVideo?.url || current.task.videoUrl,
+          videoUrl: videoUrl || current.task.videoUrl,
           videoStorageKey: '',
           lastCheckedAt: nowIso,
           finishedAt: resolveSeedanceFinishedAt(normalizedStatus, current.task.finishedAt, nowIso),

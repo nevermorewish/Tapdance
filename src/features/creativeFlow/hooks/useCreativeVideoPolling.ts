@@ -218,31 +218,14 @@ export function useCreativeVideoPolling({
               setOperationRecord(shotVideoOperationKey);
               updated = true;
             } else if (result.videoUrl) {
-              try {
-                const persistedVideo = await persistGeneratedMediaUrl(result.videoUrl, {
-                  kind: 'video',
-                  assetId: `${project.id}:shot:${shot.id}:video`,
-                  title: `镜头 ${shot.shotNumber} 视频`,
-                });
-                newShots[index] = {
-                  ...shot,
-                  videoStatus: 'completed',
-                  videoUrl: persistedVideo.url,
-                  videoStorageKey: '',
-                  videoOperation: undefined,
-                  videoError: undefined,
-                };
-              } catch (persistError: any) {
-                console.error('Failed to persist shot video:', persistError);
-                newShots[index] = {
-                  ...shot,
-                  videoStatus: 'completed',
-                  videoUrl: result.videoUrl,
-                  videoStorageKey: '',
-                  videoOperation: undefined,
-                  videoError: undefined,
-                };
-              }
+              newShots[index] = {
+                ...shot,
+                videoStatus: 'completed',
+                videoUrl: result.videoUrl,
+                videoStorageKey: '',
+                videoOperation: undefined,
+                videoError: undefined,
+              };
               setOperationRecord(shotVideoOperationKey);
               updated = true;
             } else if (result.error) {
@@ -285,31 +268,14 @@ export function useCreativeVideoPolling({
               setOperationRecord(transitionVideoOperationKey);
               updated = true;
             } else if (result.videoUrl) {
-              try {
-                const persistedVideo = await persistGeneratedMediaUrl(result.videoUrl, {
-                  kind: 'video',
-                  assetId: `${project.id}:shot:${shot.id}:transition`,
-                  title: `镜头 ${shot.shotNumber} 转场`,
-                });
-                newShots[index] = {
-                  ...newShots[index],
-                  transitionVideoStatus: 'completed',
-                  transitionVideoUrl: persistedVideo.url,
-                  transitionVideoStorageKey: '',
-                  transitionVideoOperation: undefined,
-                  transitionVideoError: undefined,
-                };
-              } catch (persistError: any) {
-                console.error('Failed to persist transition video:', persistError);
-                newShots[index] = {
-                  ...newShots[index],
-                  transitionVideoStatus: 'completed',
-                  transitionVideoUrl: result.videoUrl,
-                  transitionVideoStorageKey: '',
-                  transitionVideoOperation: undefined,
-                  transitionVideoError: undefined,
-                };
-              }
+              newShots[index] = {
+                ...newShots[index],
+                transitionVideoStatus: 'completed',
+                transitionVideoUrl: result.videoUrl,
+                transitionVideoStorageKey: '',
+                transitionVideoOperation: undefined,
+                transitionVideoError: undefined,
+              };
               setOperationRecord(transitionVideoOperationKey);
               updated = true;
             } else if (result.error) {
