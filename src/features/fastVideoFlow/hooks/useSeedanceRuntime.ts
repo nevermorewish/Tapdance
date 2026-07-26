@@ -14,7 +14,7 @@ type SeedanceLogEntry = {
   request: unknown;
   response?: unknown;
   error?: string;
-  executor?: 'ark' | 'cli' | 'aliyun';
+  executor?: 'ark' | 'cli' | 'aliyun' | 'volcengine';
   sourceId?: ModelInvocationLogEntry['sourceId'];
   modelName?: string;
 };
@@ -82,7 +82,7 @@ export function useSeedanceRuntime({
     }
   };
 
-  const buildSeedanceSubmitLogRequest = (draft: SeedanceDraft, executor: 'ark' | 'cli', apiModelKey: SeedanceApiModelKey = project.fastFlow.executionConfig.apiModelKey) => {
+  const buildSeedanceSubmitLogRequest = (draft: SeedanceDraft, executor: 'ark' | 'cli' | 'aliyun' | 'volcengine', apiModelKey: SeedanceApiModelKey = project.fastFlow.executionConfig.apiModelKey) => {
     const draftSnapshot = buildSeedanceDraftLogSnapshot(draft);
     if (executor === 'ark') {
       const arkModelMeta = getSeedanceArkModelMeta(apiModelKey);
@@ -91,6 +91,21 @@ export function useSeedanceRuntime({
         executor: 'ark' as const,
         modelKey: apiModelKey,
         model: arkModelMeta.modelName,
+        templateId: draft.baseTemplateId,
+        overlayTemplateIds: draft.overlayTemplateIds,
+        draft: draftSnapshot,
+        compiledRequest: buildCompiledSeedanceRequestLogSnapshot(draft),
+      };
+    }
+
+    if (executor === 'volcengine') {
+      const modelMeta = getSeedanceArkModelMeta(apiModelKey);
+      return {
+        projectId: project.id,
+        executor: 'volcengine' as const,
+        endpoint: '/api/v3/contents/generations/tasks',
+        modelKey: apiModelKey,
+        model: modelMeta.modelName,
         templateId: draft.baseTemplateId,
         overlayTemplateIds: draft.overlayTemplateIds,
         draft: draftSnapshot,
@@ -116,6 +131,12 @@ export function useSeedanceRuntime({
         provider: 'seedance-ark' as const,
         ...getSeedanceArkModelMeta(project.fastFlow.executionConfig.apiModelKey),
       }
+      : executor === 'volcengine'
+        ? {
+          provider: 'seedance-volcengine' as const,
+          sourceId: 'seedance.apiModel' as const,
+          modelName: apiSettings.seedance.apiModel,
+        }
       : executor === 'aliyun'
         ? {
           provider: 'aliyun' as const,

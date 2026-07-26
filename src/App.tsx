@@ -51,6 +51,7 @@ import { useProjectDetailNavigation } from './features/app/hooks/useProjectDetai
 import { useThemeModeStorage } from './features/app/hooks/useThemeModeStorage.ts';
 import { resetPersistedAppStateStore } from './features/app/services/appStateStore.ts';
 import { StartupSplash } from './features/app/components/StartupSplash.tsx';
+import { UpdateNotifier } from './components/UpdateNotifier.tsx';
 import { CreativeFlowWorkspace } from './features/creativeFlow/components/CreativeFlowWorkspace.tsx';
 import { useAssetDetailActions } from './features/creativeFlow/hooks/useAssetDetailActions.ts';
 import { useCreativeStyleContext } from './features/creativeFlow/hooks/useCreativeStyleContext.ts';
@@ -58,6 +59,7 @@ import { useCreativeFlowUiState } from './features/creativeFlow/hooks/useCreativ
 import { useCreativeVideoPolling } from './features/creativeFlow/hooks/useCreativeVideoPolling.ts';
 import { ApiConfigWorkspace } from './features/apiConfig/components/ApiConfigWorkspace.tsx';
 import { NewApiAuthPanel } from './features/apiConfig/components/NewApiAuthPanel.tsx';
+import { MediaTaskListWorkspace } from './features/taskList/components/MediaTaskListWorkspace.tsx';
 import { isNewApiAuthenticated } from './services/newApiAuth.ts';
 import { useApiSettingsStorage } from './features/apiConfig/hooks/useApiSettingsStorage.ts';
 import { ImagePreviewModal } from './components/modals/ImagePreviewModal.tsx';
@@ -1234,7 +1236,7 @@ export default function App() {
         updateGeminiRoleModel={updateGeminiRoleModel}
       />
     )
-    : view === 'imageCreation' || view === 'imageTasks'
+    : view === 'imageCreation'
       ? (
         <ImageCreationWorkspace
           records={imageCreationRecords}
@@ -1245,6 +1247,10 @@ export default function App() {
           onGenerate={handleGenerateImageCreation}
           onPreviewImage={setPreviewImage}
         />
+      )
+    : view === 'imageTasks'
+      ? (
+        <MediaTaskListWorkspace projects={projects} imageCreationRecords={imageCreationRecords} />
       )
     : view === 'cliQueue'
       ? (
@@ -1465,6 +1471,7 @@ export default function App() {
 
   return (
     <div className={`theme-${themeMode} app-shell flex h-screen flex-col text-zinc-100 font-sans overflow-hidden`}>
+      <UpdateNotifier />
       <div className="studio-backdrop">
         <div className="studio-orb studio-orb-1" />
         <div className="studio-orb studio-orb-2" />
@@ -1482,6 +1489,8 @@ export default function App() {
           onNavigate={handleNavigatePrimaryView}
           onThemeModeChange={setThemeMode}
           onOpenApiConfig={() => setView('apiConfig')}
+          apiSettings={apiSettings}
+          setApiSettings={setApiSettings}
         />
         <main className="app-main flex-1 overflow-y-auto">
           <div className="px-4 sm:px-6 xl:px-8">

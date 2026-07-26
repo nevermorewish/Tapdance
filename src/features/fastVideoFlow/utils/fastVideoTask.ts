@@ -80,7 +80,7 @@ function isFastVideoTaskActive(task: Project['fastFlow']['task']) {
 export function canCancelFastVideoTask(task: Project['fastFlow']['task']) {
   return Boolean(getFastVideoTaskId(task))
     && isFastVideoTaskActive(task)
-    && task.provider === 'ark';
+    && (task.provider === 'ark' || task.provider === 'volcengine');
 }
 
 export function isSeedanceRealPersonRejection(message?: string) {

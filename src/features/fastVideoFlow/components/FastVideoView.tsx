@@ -1060,7 +1060,7 @@ type Props = {
   draftIssues: string[];
   task: SeedanceTask;
   executionConfig: {
-    executor: 'ark' | 'cli' | 'aliyun';
+    executor: 'ark' | 'cli' | 'aliyun' | 'volcengine';
     apiModelKey: SeedanceApiModelKey;
     cliModelVersion: SeedanceModelVersion;
     pollIntervalSec: number;
@@ -1952,9 +1952,9 @@ export function FastVideoView({
             <div className="flex flex-col items-start gap-1 2xl:flex-row 2xl:items-center 2xl:justify-between 2xl:gap-3">
               <div className="text-white font-semibold">执行参数</div>
               <div className="break-words text-left text-xs leading-5 text-zinc-500 2xl:text-right">
-                {(executionConfig.executor === 'ark' ? 'Ark API' : executionConfig.executor === 'aliyun' ? '阿里云' : '本地 CLI')}
+                {(executionConfig.executor === 'ark' ? 'OpenAI 执行器' : executionConfig.executor === 'volcengine' ? '火山执行器（/api/v3）' : executionConfig.executor === 'aliyun' ? '阿里云' : '本地 CLI')}
                 {' · '}
-                {`画幅：${seedanceDraft.options.ratio} · 时长：${seedanceDraft.options.duration || 10}s · ${seedanceDraft.options.resolution}`}
+                {`画幅：${seedanceDraft.options.ratio} · 时长：${seedanceDraft.options.duration || 5}s · ${seedanceDraft.options.resolution || '480p'}`}
               </div>
             </div>
             <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
@@ -1965,14 +1965,15 @@ export function FastVideoView({
                   onChange={(event) => onUpdateExecutionConfig({ executor: event.target.value as Props['executionConfig']['executor'] })}
                   className={controlClassName}
                 >
-                  <option value="ark">Ark API</option>
+                  <option value="ark">OpenAI 执行器（/v1/video/generations）</option>
+                  <option value="volcengine">火山执行器（/api/v3）</option>
                   <option value="cli">本地 CLI</option>
-                  <option value="aliyun">HappyHorse API</option>
+                  <option value="aliyun">阿里云</option>
                 </StudioSelect>
               </label>
-              {executionConfig.executor === 'ark' ? (
+              {executionConfig.executor === 'ark' || executionConfig.executor === 'volcengine' ? (
                 <label className="block min-w-0">
-                  <span className={fieldLabelClassName}>Ark 模型</span>
+                  <span className={fieldLabelClassName}>视频模型</span>
                   <StudioSelect
                     value={executionConfig.apiModelKey}
                     onChange={(event) => onUpdateExecutionConfig({ apiModelKey: event.target.value as Props['executionConfig']['apiModelKey'] })}
@@ -2038,8 +2039,8 @@ export function FastVideoView({
                   type="number"
                   min={4}
                   max={15}
-                  value={seedanceDraft.options.duration || 10}
-                  onChange={(event) => onUpdateDraft({ options: { duration: Math.max(4, Math.min(15, Number(event.target.value) || 10)) } })}
+                  value={seedanceDraft.options.duration || 5}
+                  onChange={(event) => onUpdateDraft({ options: { duration: Math.max(4, Math.min(15, Number(event.target.value) || 5)) } })}
                   className={controlClassName}
                 />
               </label>

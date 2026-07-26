@@ -28,7 +28,7 @@ function normalizeFastVideoAspectRatio(value: unknown): FastVideoInput['aspectRa
 }
 
 function normalizeSeedanceResolution(value: unknown): SeedanceDraft['options']['resolution'] {
-  return value === '480p' || value === '1080p' ? value : '720p';
+  return value === '480p' || value === '720p' || value === '1080p' ? value : '480p';
 }
 
 export function isFastAssetSelectedForVideo(selectedForVideo?: boolean) {
@@ -42,7 +42,7 @@ export function createEmptyFastVideoInput(): FastVideoInput {
     referenceVideos: [],
     referenceAudios: [],
     aspectRatio: '16:9',
-    durationSec: 10,
+    durationSec: 5,
     preferredSceneCount: 'auto',
     quickCutEnabled: false,
     negativePrompt: '',
@@ -85,7 +85,7 @@ export function createDefaultFastSeedanceDraft(input: FastVideoInput, videoPromp
     options: {
       ratio: input.aspectRatio,
       duration: input.durationSec,
-      resolution: '720p',
+      resolution: '480p',
       generateAudio: true,
       returnLastFrame: false,
       useWebSearch: false,
@@ -106,7 +106,7 @@ export function createEmptyFastVideoProject(): FastVideoProject {
       apiModelKey: 'standard',
       cliModelVersion: 'seedance2.0',
       pollIntervalSec: 15,
-      videoResolution: '720p',
+      videoResolution: '480p',
     },
     task: createEmptySeedanceTask(),
   };
@@ -283,7 +283,7 @@ export function syncFastFlowSeedanceDraft(fastFlow: FastVideoProject): SeedanceD
   const selectedReferenceVideos = originalReferenceVideos.filter((item) => isFastAssetSelectedForVideo(item.selectedForVideo));
   const originalReferenceAudios = fastFlow.input.referenceAudios.filter((item) => item.audioUrl.trim());
   const selectedReferenceAudios = originalReferenceAudios.filter((item) => isFastAssetSelectedForVideo(item.selectedForVideo));
-  const useAssetIdForVideoTask = fastFlow.executionConfig.executor === 'ark';
+  const useAssetIdForVideoTask = fastFlow.executionConfig.executor === 'volcengine';
   const assets = (() => {
     if (baseDraft.baseTemplateId === 'first_last_frame') {
       const firstScene = selectedReadyScenes[0];
@@ -433,7 +433,7 @@ export function resolveFastVideoTaskProvider(
   task?: Partial<SeedanceTask> | null,
   fallback: SeedanceExecutorId = 'cli',
 ): SeedanceExecutorId {
-  if (task?.provider === 'ark' || task?.provider === 'cli' || task?.provider === 'aliyun') {
+  if (task?.provider === 'ark' || task?.provider === 'cli' || task?.provider === 'aliyun' || task?.provider === 'volcengine') {
     return task.provider;
   }
 
@@ -443,6 +443,10 @@ export function resolveFastVideoTaskProvider(
 
   if (submitId) {
     return 'cli';
+  }
+
+  if (raw && raw.endpoint === '/api/v3/contents/generations/tasks') {
+    return 'volcengine';
   }
 
   if (raw && (
@@ -477,7 +481,7 @@ export function normalizeFastVideoProject(value?: NormalizableFastVideoProject |
   const input = (value?.input || {}) as Partial<FastVideoInput>;
   const task = (value?.task || {}) as Partial<SeedanceTask>;
   const legacyInput = (value?.input || {}) as Record<string, unknown>;
-  const executionExecutor = value?.executionConfig?.executor === 'cli' || value?.executionConfig?.executor === 'ark' || value?.executionConfig?.executor === 'aliyun'
+  const executionExecutor = value?.executionConfig?.executor === 'cli' || value?.executionConfig?.executor === 'ark' || value?.executionConfig?.executor === 'aliyun' || value?.executionConfig?.executor === 'volcengine'
     ? value.executionConfig.executor
     : base.executionConfig.executor;
   const normalizedReferenceImages = normalizeReferenceImages(input.referenceImages, typeof legacyInput.referenceImageUrl === 'string' ? legacyInput.referenceImageUrl : '');

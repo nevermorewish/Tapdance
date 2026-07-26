@@ -9,7 +9,8 @@ const activeBrand = {
     "doubao-seedance-2.0",
     "doubao-seedance-2.0-fast",
     "doubao-seedance-2.0-mini"
-  ]
+  ],
+  "updateFeedBaseUrl": "https://huanxing.tos-cn-beijing.volces.com/package/Tapdance/latest"
 };
 
 export default activeBrand;

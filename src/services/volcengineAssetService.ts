@@ -1,5 +1,5 @@
 import { loadApiSettings } from './apiConfig.ts';
-import { isTosConfigComplete, uploadFileToTos } from './tosUploadService.ts';
+import { uploadFileToTos } from './tosUploadService.ts';
 
 export const DEFAULT_VIRTUAL_PORTRAIT_ASSET_GROUP_NAME = 'Tapdance 虚拟人像';
 export const DEFAULT_VIRTUAL_PORTRAIT_PROJECT_NAME = 'default';
@@ -102,19 +102,29 @@ async function callHuanxingMaterialApi<T>(action: ArkAssetApiAction, body: Recor
     throw new Error('请先登录寰星云科 API，再使用素材库。');
   }
 
-  const response = await fetch(`${materialBaseUrl()}/api/material?Action=${encodeURIComponent(action)}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${materialBaseUrl()}/api/material?Action=${encodeURIComponent(action)}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (requestError) {
+    const detail = requestError instanceof Error ? requestError.message : String(requestError);
+    throw new Error(`素材库网络请求失败（${action}）：${detail || '请检查 Huanxing API 网络连接'}`);
+  }
 
   const text = await response.text();
   let payload: any = {};
 
   try { payload = text ? JSON.parse(text) : {}; } catch { payload = { message: text }; }
+
+  if (response.status === 502) {
+    throw new Error('素材库请求失败 (502)：Huanxing API 上游素材服务暂时不可用，请检查服务端 SeedanceAPI 渠道配置。');
+  }
 
   const errorMessage = payload?.error?.message
     || payload?.error
@@ -232,20 +242,28 @@ export async function listArkAssetGroups(params?: {
 }) {
   const groupType = String(params?.groupType || ARK_VIRTUAL_PORTRAIT_GROUP_TYPE).trim() || ARK_VIRTUAL_PORTRAIT_GROUP_TYPE;
   const projectName = params?.projectName ? normalizeProjectName(params.projectName) : '';
-  const result = await callArkAssetApi<any>('ListAssetGroups', {
-    Filter: {
-      GroupType: groupType,
-      ...(params?.name?.trim() ? { Name: params.name.trim() } : {}),
-      ...(params?.groupIds?.length ? { GroupIds: params.groupIds } : {}),
-    },
-    PageNumber: 1,
-    PageSize: 50,
-    ...(projectName ? { ProjectName: projectName } : {}),
-  }, params?.baseUrl);
+  const pageSize = 50;
+  const allItems: any[] = [];
+  for (let pageNumber = 1; pageNumber <= 100; pageNumber += 1) {
+    const result = await callArkAssetApi<any>('ListAssetGroups', {
+      Filter: {
+        GroupType: groupType,
+        ...(params?.name?.trim() ? { Name: params.name.trim() } : {}),
+        ...(params?.groupIds?.length ? { GroupIds: params.groupIds } : {}),
+      },
+      PageNumber: pageNumber,
+      PageSize: pageSize,
+      ...(projectName ? { ProjectName: projectName } : {}),
+    }, params?.baseUrl);
+    const items = Array.isArray(result?.Items) ? result.Items : [];
+    allItems.push(...items);
+    if (items.length < pageSize) break;
+  }
 
-  return (Array.isArray(result?.Items) ? result.Items : [])
+  return Array.from(new Map(allItems
     .map((item: any) => normalizeAssetGroup(item))
     .filter((item: ArkAssetGroup | null): item is ArkAssetGroup => Boolean(item))
+    .map((item) => [item.id, item] as const)).values())
     .filter((item: ArkAssetGroup) => !projectName || item.projectName === projectName);
 }
 
@@ -267,23 +285,31 @@ export async function listArkAssets(params?: {
     .filter(Boolean);
   const groupType = String(params?.groupType || ARK_VIRTUAL_PORTRAIT_GROUP_TYPE).trim() || ARK_VIRTUAL_PORTRAIT_GROUP_TYPE;
   const projectName = params?.projectName ? normalizeProjectName(params.projectName) : '';
-  const result = await callArkAssetApi<any>('ListAssets', {
-    Filter: {
-      GroupType: groupType,
-      ...(groupIds.length > 0 ? { GroupIds: Array.from(new Set(groupIds)) } : {}),
-      ...(params?.statuses?.length ? { Statuses: params.statuses.map((item) => normalizeArkAssetStatus(item)) } : {}),
-      ...(params?.name?.trim() ? { Name: params.name.trim() } : {}),
-    },
-    PageNumber: 1,
-    PageSize: Math.max(1, Math.min(100, params?.pageSize || 100)),
-    SortBy: 'CreateTime',
-    SortOrder: 'Desc',
-    ...(projectName ? { ProjectName: projectName } : {}),
-  }, params?.baseUrl);
+  const pageSize = Math.max(1, Math.min(100, params?.pageSize || 100));
+  const allItems: any[] = [];
+  for (let pageNumber = 1; pageNumber <= 100; pageNumber += 1) {
+    const result = await callArkAssetApi<any>('ListAssets', {
+      Filter: {
+        GroupType: groupType,
+        ...(groupIds.length > 0 ? { GroupIds: Array.from(new Set(groupIds)) } : {}),
+        ...(params?.statuses?.length ? { Statuses: params.statuses.map((item) => normalizeArkAssetStatus(item)) } : {}),
+        ...(params?.name?.trim() ? { Name: params.name.trim() } : {}),
+      },
+      PageNumber: pageNumber,
+      PageSize: pageSize,
+      SortBy: 'CreateTime',
+      SortOrder: 'Desc',
+      ...(projectName ? { ProjectName: projectName } : {}),
+    }, params?.baseUrl);
+    const items = Array.isArray(result?.Items) ? result.Items : [];
+    allItems.push(...items);
+    if (items.length < pageSize) break;
+  }
 
-  return (Array.isArray(result?.Items) ? result.Items : [])
+  return Array.from(new Map(allItems
     .map((item: any) => normalizeAsset(item))
     .filter((item: ArkAsset) => item.id)
+    .map((item) => [item.id, item] as const)).values())
     .filter((item: ArkAsset) => !projectName || item.projectName === projectName);
 }
 
@@ -557,14 +583,9 @@ export async function uploadVirtualPortraitAsset(params: {
     throw new Error('单张图片需小于 30 MB。');
   }
 
-  const tosConfig = loadApiSettings().tos;
-  if (!isTosConfigComplete(tosConfig)) {
-    throw new Error('请先在 API 配置中启用并填写 TOS 配置。');
-  }
-
   const projectName = normalizeProjectName(params.projectName);
   const groupName = normalizeGroupName(params.groupName);
-  const uploaded = await uploadFileToTos(params.file, tosConfig!, {
+  const uploaded = await uploadFileToTos(params.file, undefined, {
     mediaLabel: '虚拟人像图片',
     defaultPrefix: 'virtual-portraits',
   });
@@ -640,13 +661,8 @@ export async function uploadRealPortraitAsset(params: {
     throw new Error('缺少真人人像素材组 GroupId。');
   }
 
-  const tosConfig = loadApiSettings().tos;
-  if (!isTosConfigComplete(tosConfig)) {
-    throw new Error('请先在 API 配置中启用并填写 TOS 配置。');
-  }
-
   const projectName = normalizeProjectName(params.projectName);
-  const uploaded = await uploadFileToTos(params.file, tosConfig!, {
+  const uploaded = await uploadFileToTos(params.file, undefined, {
     mediaLabel: '真人人像图片',
     defaultPrefix: 'real-portraits',
   });

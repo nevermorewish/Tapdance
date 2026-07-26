@@ -16,6 +16,12 @@ export class TosUploadError extends Error {
   }
 }
 
+// Runtime uploads use the tenant-owned anonymous TOS bucket. Credentials and
+// bucket settings are intentionally kept out of the client configuration.
+export const ANONYMOUS_TOS_BUCKET = 'huanxing';
+export const ANONYMOUS_TOS_ENDPOINT = 'https://huanxing.tos-cn-beijing.volces.com';
+export const ANONYMOUS_TOS_OBJECT_PREFIX = 'package/Tapdance/assets';
+
 export function isLikelyTosCorsError(error: unknown): error is TosUploadError {
   return error instanceof TosUploadError && error.reason === 'cors';
 }
@@ -120,9 +126,35 @@ export function resolveTosUrl(config: TosConfig, objectKey: string): string {
   return `${url.protocol}//${config.bucket}.${url.host}/${objectKey}`;
 }
 
+export function buildAnonymousTosObjectKey(file: TosUploadFileMeta, defaultPrefix = 'reference-videos'): string {
+  const prefix = `${ANONYMOUS_TOS_OBJECT_PREFIX}/${String(defaultPrefix || 'reference-videos').replace(/^\/+|\/+$/gu, '')}`;
+  return `${prefix}/${generateId()}.${getFileExtension(file)}`;
+}
+
+export function resolveAnonymousTosUrl(objectKey: string): string {
+  return `${ANONYMOUS_TOS_ENDPOINT}/${objectKey.replace(/^\/+/u, '')}`;
+}
+
+async function uploadAnonymousFileToTos(file: Blob, fileMeta: TosUploadFileMeta, defaultPrefix: string, onProgress?: (percent: number) => void) {
+  const objectKey = buildAnonymousTosObjectKey(fileMeta, defaultPrefix);
+  const response = await fetch(resolveAnonymousTosUrl(objectKey), {
+    method: 'PUT',
+    headers: {
+      'content-type': fileMeta.type || 'application/octet-stream',
+    },
+    body: file,
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new TosUploadError(`匿名上传到 TOS 失败 (${response.status})${detail ? `: ${detail}` : ''}`);
+  }
+  onProgress?.(100);
+  return { url: resolveAnonymousTosUrl(objectKey), key: objectKey };
+}
+
 export async function uploadFileToTos(
   file: File,
-  config: TosConfig,
+  config?: TosConfig,
   options?: {
     mediaLabel?: string;
     defaultPrefix?: string;
@@ -133,7 +165,7 @@ export async function uploadFileToTos(
   try {
     if (typeof window !== 'undefined' && typeof window.electronAPI?.uploadVideoToTos === 'function' && window.electronAPI.isElectron) {
       const result = await window.electronAPI.uploadVideoToTos({
-        config,
+        config: undefined,
         fileName: file.name,
         fileType: file.type,
         defaultPrefix: options?.defaultPrefix || 'reference-videos',
@@ -143,6 +175,12 @@ export async function uploadFileToTos(
       return result;
     }
 
+    // The server owns TOS credentials. Keep the client-side upload anonymous
+    // and write only under the fixed tenant asset prefix.
+    return await uploadAnonymousFileToTos(file, file, options?.defaultPrefix || 'reference-videos', onProgress);
+
+    /* Legacy credential-based upload is intentionally disabled. */
+    /*
     const client = createTosClient(config);
     const objectKey = buildTosObjectKey(config, file, options?.defaultPrefix || 'reference-videos');
 
@@ -170,6 +208,7 @@ export async function uploadFileToTos(
 
     const url = resolveTosUrl(config, objectKey);
     return { url, key: objectKey };
+    */
   } catch (err: unknown) {
     console.error('[TOS] Upload failed:', err);
     if (err instanceof TosUploadError) {
@@ -187,7 +226,7 @@ export async function uploadFileToTos(
 
 export async function uploadVideoToTos(
   file: File,
-  config: TosConfig,
+  config?: TosConfig,
   onProgress?: (percent: number) => void,
 ) {
   return uploadFileToTos(file, config, {

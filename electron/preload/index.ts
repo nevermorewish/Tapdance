@@ -1,5 +1,6 @@
 import type { TosConfig } from '../../src/types.ts'
 import type { MockApiScenario } from '../../src/types.ts'
+import type { UpdateStatus } from '../main/updater.ts'
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
@@ -9,6 +10,15 @@ const api = {
   platform: process.platform,
   getBridgeUrl: () => ipcRenderer.invoke('bridge:getUrl'),
   getAppVersion: () => ipcRenderer.invoke('app:getVersion'),
+  getUpdateStatus: (): Promise<UpdateStatus> => ipcRenderer.invoke('update:status'),
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  onUpdateStatusChanged: (callback: (status: UpdateStatus) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, status: UpdateStatus) => callback(status)
+    ipcRenderer.on('update:status-changed', listener)
+    return () => ipcRenderer.removeListener('update:status-changed', listener)
+  },
   getMockApiStatus: () => ipcRenderer.invoke('mock-api:status'),
   startMockApiServer: (options?: { port?: number; scenario?: MockApiScenario }) => ipcRenderer.invoke('mock-api:start', options),
   stopMockApiServer: () => ipcRenderer.invoke('mock-api:stop'),
@@ -17,7 +27,7 @@ const api = {
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   openRealPortraitValidation: (options: { h5Link: string; callbackURL: string }) => ipcRenderer.invoke('real-portrait:openValidation', options),
   uploadVideoToTos: (payload: {
-    config: TosConfig
+    config?: TosConfig
     fileName: string
     fileType?: string
     defaultPrefix?: string

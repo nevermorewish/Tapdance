@@ -2,20 +2,22 @@ import { app, BrowserWindow, shell, ipcMain, nativeImage, dialog } from 'electro
 import { join } from 'node:path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import type { TosConfig } from '../../src/types.ts'
-import { buildTosObjectKey, createTosClient, resolveTosUrl } from '../../src/services/tosUploadService.ts'
+import { buildAnonymousTosObjectKey, buildTosObjectKey, createTosClient, isTosConfigComplete, resolveAnonymousTosUrl, resolveTosUrl } from '../../src/services/tosUploadService.ts'
 import { startBridge } from './bridge'
 import { startMockApiServer } from '../../server/mockApiServer.mjs'
+import { AppUpdater, registerUpdateHandlers, scheduleAutomaticUpdateCheck } from './updater'
 
 let bridgeServer: any = null
 let mockApiServer: any = null
 let mainWindow: BrowserWindow | null = null
+let appUpdater: AppUpdater | null = null
 
 const iconPath = join(__dirname, '../../public/assets/tapdance_logo.png')
 const WINDOW_TITLE_BAR_HEIGHT = 56
 
 type WindowAppearanceMode = 'light' | 'dark'
 type TosUploadPayload = {
-  config: TosConfig
+  config?: TosConfig
   fileName: string
   fileType?: string
   defaultPrefix?: string
@@ -376,9 +378,28 @@ app.whenReady().then(async () => {
         throw new Error('缺少上传文件名')
       }
 
+      const body = Buffer.from(payload.data)
+
+      if (!payload.config || !isTosConfigComplete(payload.config)) {
+        const objectKey = buildAnonymousTosObjectKey(fileMeta, payload.defaultPrefix || 'reference-videos')
+        const publicUrl = resolveAnonymousTosUrl(objectKey)
+        const response = await fetch(publicUrl, {
+          method: 'PUT',
+          headers: {
+            'content-type': fileMeta.type || 'application/octet-stream',
+            'content-length': String(body.byteLength),
+          },
+          body,
+        })
+        if (!response.ok) {
+          const detail = await response.text().catch(() => '')
+          throw new Error(`匿名 TOS 上传失败 (${response.status})${detail ? `: ${detail}` : ''}`)
+        }
+        return { url: publicUrl, key: objectKey }
+      }
+
       const client = createTosClient(payload.config)
       const objectKey = buildTosObjectKey(payload.config, fileMeta, payload.defaultPrefix || 'reference-videos')
-      const body = Buffer.from(payload.data)
 
       await client.putObject({
         bucket: payload.config.bucket,
@@ -412,7 +433,10 @@ app.whenReady().then(async () => {
     return result.filePaths[0] || ''
   })
 
-  createWindow()
+  await createWindow()
+  appUpdater = new AppUpdater()
+  registerUpdateHandlers(appUpdater, mainWindow!)
+  scheduleAutomaticUpdateCheck(appUpdater)
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

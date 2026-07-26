@@ -614,7 +614,7 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
     setRealPortraitError('');
     try {
       const groups = await listArkAssetGroups({ groupType: ARK_REAL_PORTRAIT_GROUP_TYPE });
-      const nextGroups = await Promise.all(groups.map(async (group) => {
+      const groupResults = await Promise.allSettled(groups.map(async (group) => {
         const assets = await listArkAssets({
           groupId: group.id,
           groupType: ARK_REAL_PORTRAIT_GROUP_TYPE,
@@ -628,6 +628,23 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
           coverImageUrl: assets[0]?.url || '',
         };
       }));
+      const failedGroups = groupResults.filter((result) => result.status === 'rejected');
+      let nextGroups = groupResults
+        .filter((result): result is PromiseFulfilledResult<RealPortraitAssetGroupView> => result.status === 'fulfilled')
+        .map((result) => result.value);
+      if (nextGroups.length === 0 && groups.length > 0 && failedGroups.length === groups.length) {
+        throw failedGroups[0].reason;
+      }
+      if (failedGroups.length > 0) {
+        const previousById = new Map(realPortraitGroups.map((item) => [item.group.id, item]));
+        nextGroups = [
+          ...nextGroups,
+          ...groups
+            .filter((group) => !nextGroups.some((item) => item.group.id === group.id))
+            .map((group) => previousById.get(group.id))
+            .filter((item): item is RealPortraitAssetGroupView => Boolean(item)),
+        ];
+      }
       const latestAssetByAssetId = new Map<string, ArkAsset>();
       nextGroups.forEach((groupView) => {
         groupView.assets.forEach((asset) => {
@@ -708,7 +725,7 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
     setVirtualPortraitError('');
     try {
       const groups = await listArkAssetGroups();
-      const nextGroups = await Promise.all(groups.map(async (group) => {
+      const groupResults = await Promise.allSettled(groups.map(async (group) => {
         const assets = await listArkAssets({
           groupId: group.id,
           projectName: group.projectName,
@@ -721,6 +738,23 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
           coverImageUrl: assets[0]?.url || '',
         };
       }));
+      const failedGroups = groupResults.filter((result) => result.status === 'rejected');
+      let nextGroups = groupResults
+        .filter((result): result is PromiseFulfilledResult<VirtualPortraitAssetGroupView> => result.status === 'fulfilled')
+        .map((result) => result.value);
+      if (nextGroups.length === 0 && groups.length > 0 && failedGroups.length === groups.length) {
+        throw failedGroups[0].reason;
+      }
+      if (failedGroups.length > 0) {
+        const previousById = new Map(virtualPortraitGroups.map((item) => [item.group.id, item]));
+        nextGroups = [
+          ...nextGroups,
+          ...groups
+            .filter((group) => !nextGroups.some((item) => item.group.id === group.id))
+            .map((group) => previousById.get(group.id))
+            .filter((item): item is VirtualPortraitAssetGroupView => Boolean(item)),
+        ];
+      }
       const latestAssetByAssetId = new Map<string, ArkAsset>();
       nextGroups.forEach((groupView) => {
         groupView.assets.forEach((asset) => {
@@ -848,6 +882,38 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
   useEffect(() => {
     void refreshSeedreamPortraitAssets();
   }, []);
+
+  // Load the remote material list whenever the user enters a portrait tab and
+  // keep it fresh while the tab remains open. Each refresh function handles
+  // partial failures independently, so a transient API error does not blank
+  // the already loaded library or surface a generic "fetch failed" message.
+  useEffect(() => {
+    setPage(1);
+    if (activeTab === 'real') {
+      void refreshRealPortraitAssets();
+      void refreshRealPortraitGroups();
+    } else if (activeTab === 'virtualUpload') {
+      void refreshVirtualPortraitAssets();
+      void refreshVirtualPortraitGroups();
+    } else if (activeTab === 'seedream') {
+      void refreshSeedreamPortraitAssets();
+    }
+
+    if (activeTab !== 'real' && activeTab !== 'virtualUpload') {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      if (activeTab === 'real') {
+        void refreshRealPortraitAssets();
+        void refreshRealPortraitGroups();
+      } else {
+        void refreshVirtualPortraitAssets();
+        void refreshVirtualPortraitGroups();
+      }
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [activeTab]);
 
   useEffect(() => () => {
     Object.values(browserFolderState.fileUrls).forEach((url: string) => {
@@ -2064,6 +2130,15 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
                           alt={item.AssetGroup.Title}
                           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                           loading="lazy"
+                          onError={(event) => {
+                            const relativePath = getPortraitLibraryRelativePath(sourceUrl);
+                            const bridgeUrl = relativePath ? buildPortraitLibraryFileUrl(relativePath) : '';
+                            if (bridgeUrl && event.currentTarget.src !== bridgeUrl) {
+                              event.currentTarget.src = bridgeUrl;
+                            } else {
+                              event.currentTarget.style.display = 'none';
+                            }
+                          }}
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-black/10">无图片</div>

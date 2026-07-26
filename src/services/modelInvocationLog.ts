@@ -4,7 +4,7 @@ import { loadPersistedAppState, savePersistedAppState } from '../features/app/se
 export const MODEL_INVOCATION_LOG_STATE_KEY = 'model_invocation_logs';
 export const MODEL_INVOCATION_LOG_EVENT = 'ai-director-model-log-updated';
 
-export type ModelInvocationProviderId = 'gemini' | 'volcengine' | 'openai' | 'seedance-cli' | 'seedance-ark' | 'aliyun';
+export type ModelInvocationProviderId = 'gemini' | 'volcengine' | 'openai' | 'seedance-cli' | 'seedance-ark' | 'seedance-volcengine' | 'aliyun';
 export type ModelInvocationSourceId =
   | ModelSourceId
   | 'seedance.apiModel'
@@ -51,6 +51,9 @@ function inferSeedanceProvider(request: unknown): ModelInvocationProviderId | un
   if (executor === 'cli') {
     return 'seedance-cli';
   }
+  if (executor === 'volcengine') {
+    return 'seedance-volcengine';
+  }
   return undefined;
 }
 
@@ -67,7 +70,7 @@ function inferSeedanceSourceId(entry: Pick<ModelInvocationLogEntry, 'provider' |
     return 'seedance.fastApiModel';
   }
 
-  if (entry.provider === 'seedance-ark') {
+  if (entry.provider === 'seedance-ark' || entry.provider === 'seedance-volcengine') {
     return 'seedance.apiModel';
   }
 

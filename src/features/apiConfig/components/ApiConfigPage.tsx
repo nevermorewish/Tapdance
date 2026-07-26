@@ -57,12 +57,6 @@ export function ApiConfigPage({ apiSettings, setApiSettings, onRestoreDefaults }
       openai: { ...previous.openai, apiKey: token.key },
     };
   });
-  const logout = () => setApiSettings((previous) => ({
-    ...previous,
-    newapi: { ...previous.newapi, apiKey: '', user: null, tokens: [], selectedTokenId: null, balance: null },
-    volcengine: { ...previous.volcengine, apiKey: '' },
-    openai: { ...previous.openai, apiKey: '' },
-  }));
   const refreshBalance = async () => {
     if (!isAuthenticated || isRefreshingBalance) return;
     setIsRefreshingBalance(true);
@@ -106,16 +100,15 @@ export function ApiConfigPage({ apiSettings, setApiSettings, onRestoreDefaults }
         </label>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           {isAuthenticated ? (
-            <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">已连接：{config.user?.username}</span>
+            <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">已连接 NewAPI</span>
           ) : (
             <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-xs text-amber-200">未登录 NewAPI</span>
           )}
-          {isAuthenticated ? <button type="button" onClick={logout} className="studio-button studio-button-secondary px-4 py-2 text-xs">退出登录</button> : null}
           <button type="button" onClick={onRestoreDefaults} className="studio-button studio-button-secondary px-4 py-2 text-xs">恢复默认模型</button>
         </div>
       </div>
 
-      <div className="rounded-3xl border border-emerald-400/15 bg-emerald-400/5 p-6">
+      {false ? <div className="rounded-3xl border border-emerald-400/15 bg-emerald-400/5 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-300">Account</div>
@@ -139,7 +132,7 @@ export function ApiConfigPage({ apiSettings, setApiSettings, onRestoreDefaults }
           <button type="button" onClick={() => window.open(BRAND.rechargeUrl, '_blank', 'noopener,noreferrer')} className="studio-button studio-button-primary justify-center">充值</button>
         </div>
         {isAuthenticated ? <button type="button" onClick={() => void refreshBalance()} disabled={isRefreshingBalance} className="mt-4 text-xs text-zinc-400 hover:text-white">{isRefreshingBalance ? '正在刷新余额…' : '刷新余额'}</button> : <div className="mt-4 text-xs text-zinc-500">登录后显示用户名和实时余额。</div>}
-      </div>
+      </div> : null}
 
       <div className="rounded-3xl border border-cyan-400/15 bg-cyan-400/5 p-6 text-sm leading-7 text-zinc-300">
         <div className="font-semibold text-white">统一调用路径</div>

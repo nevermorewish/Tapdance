@@ -3,6 +3,7 @@
   "serviceUrl": "https://frogclaw.com/",
   "registerUrl": "https://frogclaw.com/sign-up",
   "rechargeUrl": "https://frogclaw.com/wallet",
+  "updateFeedBaseUrl": "https://huanxing.tos-cn-beijing.volces.com/package/Tapdance/frogclaw/latest",
   "textModel": "gpt-5.6-sol",
   "imageModel": "gpt-image-2",
   "videoModel": [

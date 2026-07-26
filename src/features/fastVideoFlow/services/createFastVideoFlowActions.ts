@@ -27,7 +27,7 @@ import {
 import { syncHumanFaceMosaicPrompt } from './fastScenePrompt.ts';
 import { fetchSeedanceTask, submitSeedanceTask } from './seedanceBridgeClient.ts';
 import { fetchHappyHorseTask, submitHappyHorseTask } from './aliyunHappyHorseService.ts';
-import { createSeedanceTask, deleteSeedanceTask, getSeedanceTask } from '../../seedance/services/seedanceApiService.ts';
+import { createOpenAiVideoTask, createSeedanceTask, deleteOpenAiVideoTask, deleteSeedanceTask, getOpenAiVideoTask, getSeedanceTask } from '../../seedance/services/seedanceApiService.ts';
 import { validateSeedanceDraft } from '../../seedance/services/seedanceDraft.ts';
 import type { SeedanceApiModelKey, SeedanceBaseTemplateId, SeedanceDraft, SeedanceExecutorId } from '../../seedance/types.ts';
 import { SEEDANCE_TEMPLATE_REGISTRY } from '../../seedance/config/seedanceTemplateRegistry.ts';
@@ -66,7 +66,7 @@ type SeedanceLogEntry = {
   request: unknown;
   response?: unknown;
   error?: string;
-  executor?: 'ark' | 'cli' | 'aliyun';
+  executor?: 'ark' | 'cli' | 'aliyun' | 'volcengine';
   sourceId?: ModelInvocationLogEntry['sourceId'];
   modelName?: string;
 };
@@ -775,7 +775,7 @@ export function createFastVideoFlowActions({
             executor: current.fastFlow.executionConfig.executor || apiSettings.seedance.defaultExecutor,
             cliModelVersion: current.fastFlow.executionConfig.cliModelVersion || apiSettings.seedance.cliModelVersion,
             pollIntervalSec: current.fastFlow.executionConfig.pollIntervalSec || apiSettings.seedance.pollIntervalSec,
-            videoResolution: '720p',
+            videoResolution: '480p',
           },
           task: {
             provider: current.fastFlow.executionConfig.executor || apiSettings.seedance.defaultExecutor,
@@ -1258,14 +1258,14 @@ export function createFastVideoFlowActions({
         return;
       }
 
-      if (taskExecutor === 'ark') {
+      if (taskExecutor === 'volcengine') {
         const result = await getSeedanceTask(taskId);
         appendSeedanceLog({
           operation: 'seedanceQueryResult',
           status: 'success',
-          executor: 'ark',
+          executor: 'volcengine',
           modelName: result.model || getSeedanceArkModelMeta(project.fastFlow.executionConfig.apiModelKey).modelName,
-          request: { taskId, executor: 'ark' },
+          request: { taskId, executor: 'volcengine', endpoint: '/api/v3/contents/generations/tasks' },
           response: result,
         });
 
@@ -1291,7 +1291,7 @@ export function createFastVideoFlowActions({
           ...current,
           task: {
             ...current.task,
-            provider: 'ark',
+            provider: 'volcengine',
             taskId,
             submitId: '',
             status: normalizedStatus,
@@ -1304,6 +1304,43 @@ export function createFastVideoFlowActions({
             videoStorageKey: '',
             lastFrameStorageKey: '',
             lastCheckedAt: nowIso,
+            finishedAt: resolveSeedanceFinishedAt(normalizedStatus, current.task.finishedAt, nowIso),
+          },
+        }));
+        return;
+      }
+
+      if (taskExecutor === 'ark') {
+        const result = await getOpenAiVideoTask(taskId);
+        appendSeedanceLog({
+          operation: 'openaiVideoQueryResult',
+          status: 'success',
+          executor: 'ark',
+          modelName: result.model || getSeedanceArkModelMeta(project.fastFlow.executionConfig.apiModelKey).modelName,
+          request: { taskId, executor: 'ark', endpoint: '/v1/video/generations' },
+          response: result,
+        });
+        const normalizedStatus = mapRemoteSeedanceStatus(result.status);
+        const shouldPersistOutputs = normalizedStatus === 'completed';
+        const persistedVideo = shouldPersistOutputs && result.videoUrl
+          ? await persistGeneratedMediaUrl(result.videoUrl, { kind: 'video', assetId: `${targetProjectId}:fast-task:video`, title: '极速视频成片' })
+          : undefined;
+        const persistedLastFrame = shouldPersistOutputs && result.lastFrameUrl
+          ? await persistGeneratedMediaUrl(result.lastFrameUrl, { kind: 'image', assetId: `${targetProjectId}:fast-task:last-frame`, title: '极速视频尾帧' })
+          : undefined;
+        const nowIso = new Date().toISOString();
+        updateFastFlowByProjectId(targetProjectId, (current) => ({
+          ...current,
+          task: {
+            ...current.task,
+            provider: 'ark', taskId, submitId: '', status: normalizedStatus,
+            remoteStatus: result.status || current.task.remoteStatus,
+            queueStatus: result.status || current.task.queueStatus,
+            raw: result.raw,
+            error: normalizedStatus === 'failed' ? (result.error?.message || 'OpenAI 视频任务失败，请查看日志。') : '',
+            videoUrl: persistedVideo?.url || current.task.videoUrl,
+            lastFrameUrl: persistedLastFrame?.url || current.task.lastFrameUrl,
+            videoStorageKey: '', lastFrameStorageKey: '', lastCheckedAt: nowIso,
             finishedAt: resolveSeedanceFinishedAt(normalizedStatus, current.task.finishedAt, nowIso),
           },
         }));
@@ -1399,16 +1436,20 @@ export function createFastVideoFlowActions({
         return;
       }
 
-      if (task.provider !== 'ark') {
-        throw new Error('当前本地 CLI 执行器暂不支持取消已提交任务。');
+      if (task.provider !== 'ark' && task.provider !== 'volcengine') {
+        throw new Error('当前执行器暂不支持取消已提交任务。');
       }
 
-      await deleteSeedanceTask(taskId);
+      if (task.provider === 'ark') {
+        await deleteOpenAiVideoTask(taskId);
+      } else {
+        await deleteSeedanceTask(taskId);
+      }
       appendSeedanceLog({
         operation: 'seedanceCancel',
         status: 'success',
-        executor: 'ark',
-        request: { taskId, executor: 'ark' },
+        executor: task.provider,
+        request: { taskId, executor: task.provider },
       });
 
       const nowIso = new Date().toISOString();
@@ -1427,7 +1468,7 @@ export function createFastVideoFlowActions({
     } catch (error: any) {
       const errorMessage = error?.message || '取消生成任务失败。';
       console.error('Failed to cancel fast video task:', error);
-      const taskExecutor = task.provider === 'ark' ? 'ark' : 'cli';
+      const taskExecutor = task.provider === 'volcengine' ? 'volcengine' : task.provider === 'ark' ? 'ark' : 'cli';
       appendSeedanceLog({
         operation: 'seedanceCancel',
         status: 'error',
@@ -1576,9 +1617,9 @@ export function createFastVideoFlowActions({
       } else if (submitExecutor === 'ark') {
         const submitRequestLog = buildSeedanceSubmitLogRequest(draft, 'ark');
         const arkModelMeta = getSeedanceArkModelMeta(project.fastFlow.executionConfig.apiModelKey);
-        const result = await createSeedanceTask(draft, project.fastFlow.executionConfig.apiModelKey);
+        const result = await createOpenAiVideoTask(draft, project.fastFlow.executionConfig.apiModelKey);
         appendSeedanceLog({
-          operation: 'seedanceSubmit',
+          operation: 'openaiVideoSubmit',
           status: 'success',
           executor: 'ark',
           sourceId: arkModelMeta.sourceId,
@@ -1606,6 +1647,29 @@ export function createFastVideoFlowActions({
         }));
         setView('fastVideo');
         await handleRefreshFastVideoTask(result.id, 'ark');
+      } else if (submitExecutor === 'volcengine') {
+        const submitRequestLog = buildSeedanceSubmitLogRequest(draft, 'volcengine');
+        const result = await createSeedanceTask(draft, project.fastFlow.executionConfig.apiModelKey);
+        appendSeedanceLog({
+          operation: 'volcengineVideoSubmit',
+          status: 'success',
+          executor: 'volcengine',
+          request: { ...submitRequestLog, endpoint: '/api/v3/contents/generations/tasks' },
+          response: result,
+        });
+        updateFastFlowByProjectId(targetProjectId, (current) => ({
+          ...current,
+          task: {
+            ...current.task,
+            provider: 'volcengine', taskId: result.id, submitId: '',
+            status: mapRemoteSeedanceStatus(result.status), remoteStatus: result.status,
+            queueStatus: result.status, raw: result.raw, error: '',
+            lastCheckedAt: new Date().toISOString(), startedAt: current.task.startedAt || submitStartedAt,
+            finishedAt: resolveSeedanceFinishedAt(mapRemoteSeedanceStatus(result.status), current.task.finishedAt),
+          },
+        }));
+        setView('fastVideo');
+        await handleRefreshFastVideoTask(result.id, 'volcengine');
       } else {
         const imageSources = draft.assets
           .filter((asset) => asset.kind === 'image')

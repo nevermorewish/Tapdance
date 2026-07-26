@@ -51,6 +51,7 @@
     "@volcengine/tos-sdk": "^2.9.1",
     "better-sqlite3": "^12.4.1",
     "dotenv": "^17.2.3",
+    "electron-updater": "^6.8.9",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
@@ -130,9 +131,8 @@
     "npmRebuild": true,
     "publish": [
       {
-        "provider": "github",
-        "owner": "lazygunner",
-        "repo": "Tapdance"
+        "provider": "generic",
+        "url": "https://huanxing.tos-cn-beijing.volces.com/package/Tapdance/latest"
       }
     ]
   }

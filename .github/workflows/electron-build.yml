@@ -16,8 +16,6 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  TOS_BUCKET_URL: https://huanxing.tos-cn-beijing.volces.com
-  TOS_OBJECT_PREFIX: package
 
 jobs:
   package-windows:
@@ -87,32 +85,14 @@ jobs:
           $source = "release/$env:BRAND"
           $installers = Get-ChildItem $source -Filter '*.exe' -File
           if ($installers.Count -eq 0) { throw "No Windows installer found under $source" }
+          $updateMetadata = Get-ChildItem $source -Filter 'latest.yml' -File
+          if ($updateMetadata.Count -eq 0) { throw "No latest.yml found under $source" }
           $installers | Get-FileHash -Algorithm SHA256 | Format-Table -AutoSize
 
       - name: Upload package to Volcengine TOS
         env:
           BRAND: ${{ matrix.brand }}
-        shell: pwsh
-        run: |
-          $package = Get-Content package.json -Raw | ConvertFrom-Json
-          $version = [string]$package.version
-          $source = "release/$env:BRAND"
-          $prefix = "$env:TOS_OBJECT_PREFIX/$env:BRAND/v$version"
-          $files = Get-ChildItem $source -File | Where-Object { $_.Name -ne 'builder-debug.yml' }
-          if ($files.Count -eq 0) { throw "No package files found under $source" }
-
-          foreach ($file in $files) {
-            $objectUrl = "$env:TOS_BUCKET_URL/$prefix/$($file.Name)"
-            Write-Host "Uploading $($file.Name) -> $objectUrl"
-            & curl.exe --fail --show-error --silent --retry 3 --retry-all-errors `
-              -X PUT `
-              -H "Content-Type: application/octet-stream" `
-              --upload-file $file.FullName `
-              $objectUrl
-            if ($LASTEXITCODE -ne 0) { throw "TOS upload failed for $($file.Name)" }
-          }
-
-          Write-Host "Uploaded $env:BRAND package to $env:TOS_BUCKET_URL/$prefix/"
+        run: node scripts/upload-tos.mjs release/${{ matrix.brand }}
 
       - name: Upload GitHub workflow artifact
         uses: actions/upload-artifact@v4

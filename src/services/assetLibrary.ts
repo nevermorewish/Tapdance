@@ -1,5 +1,6 @@
 import { loadApiSettings } from './apiConfig.ts';
 import { buildSeedanceBridgeRequestUrl, resolveSeedanceBridgeUrl } from './seedanceBridgeUrl.ts';
+import { uploadFileToTos } from './tosUploadService.ts';
 
 export type AssetLibraryConfig = { rootPath: string; defaultRootPath: string; usingDefaultPath: boolean };
 export type AssetLibrarySavedFile = { rootPath: string; relativePath: string; absolutePath: string; fileName: string; kind: 'image' | 'video'; url: string };
@@ -13,14 +14,21 @@ async function materialRequest<T>(action: string, body: Record<string, unknown>)
   const settings = loadApiSettings();
   const key = settings.newapi.apiKey.trim();
   if (!key) throw new Error('请先登录寰星云科 API。');
-  const response = await fetch(`${getBaseUrl()}/api/material?Action=${encodeURIComponent(action)}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${getBaseUrl()}/api/material?Action=${encodeURIComponent(action)}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (requestError) {
+    const detail = requestError instanceof Error ? requestError.message : String(requestError);
+    throw new Error(`素材库网络请求失败（${action}）：${detail || '请检查 Huanxing API 网络连接'}`);
+  }
   const text = await response.text();
   let payload: any = {};
   try { payload = text ? JSON.parse(text) : {}; } catch { payload = { message: text }; }
+  if (response.status === 502) throw new Error('素材库请求失败 (502)：Huanxing API 上游素材服务暂时不可用，请检查服务端 SeedanceAPI 渠道配置。');
   if (!response.ok || payload?.error || payload?.success === false || payload?.ResponseMetadata?.Error) throw new Error(payload?.error?.message || payload?.message || payload?.ResponseMetadata?.Error?.Message || `素材库请求失败 (${response.status})`);
   return payload as T;
 }
@@ -55,10 +63,25 @@ function assertPublicUrl(value: string) {
   if (!/^https?:\/\//iu.test(value)) throw new Error('寰星素材库要求图片或视频是公网 URL；请先完成生成后再保存。');
 }
 
+async function uploadLocalMediaToPublicUrl(sourceUrl: string, kind: 'image' | 'video', fileNameHint?: string) {
+  if (/^https?:\/\//iu.test(sourceUrl)) return sourceUrl;
+  const response = await fetch(sourceUrl);
+  if (!response.ok) throw new Error(`读取生成结果失败 (${response.status})，请重新生成后再保存。`);
+  const blob = await response.blob();
+  const mimeType = blob.type || (kind === 'video' ? 'video/mp4' : 'image/png');
+  const extension = kind === 'video' ? 'mp4' : mimeType.includes('jpeg') ? 'jpg' : 'png';
+  const file = new File([blob], fileNameHint?.trim() || `generated-${Date.now()}.${extension}`, { type: mimeType });
+  const uploaded = await uploadFileToTos(file, undefined, {
+    mediaLabel: kind === 'video' ? '视频素材' : '图片素材',
+    defaultPrefix: 'library',
+  });
+  return uploaded.url;
+}
+
 export async function saveMediaToAssetLibrary(params: {
   sourceUrl: string; kind: 'image' | 'video'; assetId: string; title: string; groupName: string; projectName: string; fileNameHint?: string; baseUrl?: string;
 }) {
-  const sourceUrl = String(params.sourceUrl || '').trim();
+  let sourceUrl = String(params.sourceUrl || '').trim();
   // Keep the old local bridge only for loopback test/mock servers. Production
   // asset persistence always uses Huanxing's tenant-scoped material API below.
   const legacyLocalBridge = /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?\/api\/seedance(?:$|\/)/iu.test(params.baseUrl?.trim() || '');
@@ -71,6 +94,9 @@ export async function saveMediaToAssetLibrary(params: {
     const payload = text ? JSON.parse(text) : {};
     if (!response.ok) throw new Error(payload?.error || payload?.message || `资产库请求失败 (${response.status})`);
     return { ...payload, url: resolveSeedanceBridgeUrl(payload.url, params.baseUrl) } as AssetLibrarySavedFile;
+  }
+  if (!/^https?:\/\//iu.test(sourceUrl)) {
+    sourceUrl = await uploadLocalMediaToPublicUrl(sourceUrl, params.kind, params.fileNameHint);
   }
   assertPublicUrl(sourceUrl);
   const groupName = params.groupName.trim() || 'Tapdance';

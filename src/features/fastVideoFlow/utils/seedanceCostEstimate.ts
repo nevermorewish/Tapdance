@@ -18,7 +18,7 @@ type SeedanceEstimateDimensionConfig = {
 };
 
 type SeedanceCostExecutionConfig = {
-  executor: 'ark' | 'cli' | 'aliyun';
+  executor: 'ark' | 'cli' | 'aliyun' | 'volcengine';
   apiModelKey: SeedanceApiModelKey;
   cliModelVersion: SeedanceModelVersion;
 };
@@ -80,6 +80,9 @@ export function hasSelectedReferenceVideoInput(referenceVideos: FastReferenceVid
 export function getSeedancePricingKey(executionConfig: SeedanceCostExecutionConfig) {
   if (executionConfig.executor === 'aliyun') {
     return 'aliyun';
+  }
+  if (executionConfig.executor === 'volcengine') {
+    return executionConfig.apiModelKey === 'mini' ? 'standard' : executionConfig.apiModelKey;
   }
   if (executionConfig.executor === 'ark') {
     return executionConfig.apiModelKey === 'mini' ? 'standard' : executionConfig.apiModelKey;

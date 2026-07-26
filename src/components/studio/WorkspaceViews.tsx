@@ -26,7 +26,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-import type { Project, ProjectType } from '../../types.ts';
+import type { ApiSettings, Project, ProjectType } from '../../types.ts';
+import { AccountBalanceCard } from '../../features/apiConfig/components/AccountBalanceCard.tsx';
 import { getProjectGroupImageAssets, type ProjectGroupSummary } from '../../services/projectGroups.ts';
 import { StudioMetricCard, StudioModal, StudioPage, StudioPageHeader, StudioPanel, StudioSelect, cx } from './StudioPrimitives.tsx';
 import { buildWorkspaceTelemetry, type WorkspaceTelemetryStats } from '../../features/app/utils/workspaceTelemetry.ts';
@@ -199,9 +200,9 @@ export function getWorkspaceSurfaceMeta(view: WorkspaceView, project: Project): 
       };
     case 'imageTasks':
       return {
-        eyebrow: 'Image Tasks',
-        title: '图片任务列表',
-        description: '查看所有历史图片生成任务和输出结果',
+        eyebrow: 'Task History',
+        title: '任务列表',
+        description: '查看历史图片、分镜和视频生成任务',
         icon: ListOrdered,
         chipClassName: 'studio-accent-chip-emerald',
         badgeLabel: 'Tasks',
@@ -285,6 +286,8 @@ type StudioSidebarProps = {
   onNavigate: (view: 'home' | 'imageCreation' | 'imageTasks' | 'assetLibrary' | 'portraitLibrary' | 'cliQueue') => void;
   onThemeModeChange: (mode: WorkspaceThemeMode) => void;
   onOpenApiConfig: () => void;
+  apiSettings: ApiSettings;
+  setApiSettings: Dispatch<SetStateAction<ApiSettings>>;
 };
 
 export function StudioSidebar({
@@ -297,6 +300,8 @@ export function StudioSidebar({
   onNavigate,
   onThemeModeChange,
   onOpenApiConfig,
+  apiSettings,
+  setApiSettings,
 }: StudioSidebarProps) {
   const activePrimaryView: 'home' | 'imageCreation' | 'imageTasks' | 'assetLibrary' | 'portraitLibrary' | 'cliQueue' =
     view === 'imageCreation'
@@ -333,8 +338,8 @@ export function StudioSidebar({
       },
       {
         view: 'imageTasks',
-        label: '图片任务列表',
-        description: '查看历史图片任务和输出结果',
+        label: '任务列表',
+        description: '查看历史图片和视频任务',
         countLabel: `${mediaCount} 项`,
         icon: ListOrdered,
       },
@@ -468,6 +473,12 @@ export function StudioSidebar({
             </span>
             <Settings2 className="h-4 w-4 text-[var(--studio-dim)]" />
           </button>
+          <AccountBalanceCard
+            apiSettings={apiSettings}
+            setApiSettings={setApiSettings}
+            themeMode={themeMode}
+            onThemeModeChange={onThemeModeChange}
+          />
         </StudioPanel>
       </div>
     </aside>

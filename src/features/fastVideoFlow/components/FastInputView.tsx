@@ -1365,7 +1365,7 @@ export function FastInputView({
                     <History className="h-3.5 w-3.5" />
                     历史素材
                   </button>
-                  {!isTosConfigComplete(onTosUploadConfig) ? (
+                  {false ? (
                     <button
                       type="button"
                       onClick={onOpenApiConfig}
@@ -1530,7 +1530,7 @@ export function FastInputView({
                     <History className="h-3.5 w-3.5" />
                     历史素材
                   </button>
-                  {!isTosConfigComplete(onTosUploadConfig) ? (
+                  {false ? (
                     <button
                       type="button"
                       onClick={onOpenApiConfig}

@@ -11,12 +11,12 @@ function getSeedanceConfig() {
   return loadApiSettings().seedance;
 }
 
-function getBaseUrl(path: string) {
+function getBaseUrl(path: string, apiStyle: 'v3' | 'openai' = 'v3') {
   const settings = loadApiSettings();
   if (settings.mockApi.enabled && settings.volcengine.baseUrl) {
     return settings.volcengine.baseUrl.replace(/\/$/u, '');
   }
-  return `${settings.newapi.baseUrl.replace(/\/$/u, '')}/api/v3`;
+  return `${settings.newapi.baseUrl.replace(/\/$/u, '')}/${apiStyle === 'openai' ? 'v1' : 'api/v3'}`;
 }
 
 function getHeaders() {
@@ -47,8 +47,8 @@ function resolveHuanxingVideoModel(modelId: string, modelKey: SeedanceApiModelKe
   return modelId.trim();
 }
 
-async function requestJson(path: string, init: RequestInit) {
-  const response = await fetch(`${getBaseUrl(path)}${path}`, {
+async function requestJson(path: string, init: RequestInit, apiStyle: 'v3' | 'openai' = 'v3') {
+  const response = await fetch(`${getBaseUrl(path, apiStyle)}${path}`, {
     ...init,
     headers: {
       ...getHeaders(),
@@ -90,12 +90,16 @@ function resolveModelId(modelKey: SeedanceApiModelKey) {
 function mapTask(payload: Record<string, any>): SeedanceApiTask {
   const data = payload?.data && typeof payload.data === 'object' ? payload.data : payload;
   const content = data?.content && typeof data.content === 'object' ? data.content : {};
+  const output = data?.output && typeof data.output === 'object' ? data.output : {};
+  const videoUrl = content.video_url || content.videoUrl || output.video_url || output.videoUrl
+    || data.video_url || data.videoUrl || data.url || '';
+  const lastFrameUrl = content.last_frame_url || content.lastFrameUrl || output.last_frame_url || output.lastFrameUrl || '';
   return {
     id: String(data.id || data.task_id || '').trim(),
     status: String(data.status || '').trim(),
     model: typeof data.model === 'string' ? data.model : '',
-    videoUrl: content.video_url || content.videoUrl || '',
-    lastFrameUrl: content.last_frame_url || content.lastFrameUrl || '',
+    videoUrl,
+    lastFrameUrl,
     createdAt: typeof data.created_at === 'number' ? data.created_at : undefined,
     updatedAt: typeof data.updated_at === 'number' ? data.updated_at : undefined,
     ratio: typeof data.ratio === 'string' ? data.ratio : '',
@@ -173,6 +177,47 @@ export async function createSeedanceTask(draft: SeedanceDraft, modelKey: Seedanc
   });
 
   return mapTask(payload);
+}
+
+/** OpenAI-compatible video executor. The gateway accepts this JSON form on /v1/video/generations. */
+export async function createOpenAiVideoTask(draft: SeedanceDraft, modelKey: SeedanceApiModelKey = 'standard'): Promise<SeedanceApiTask> {
+  const normalizedDraft = await normalizeDraftForApi(draft);
+  const model = resolveHuanxingVideoModel(resolveModelId(modelKey), modelKey);
+  const images = normalizedDraft.assets
+    .filter((asset) => asset.kind === 'image')
+    .map((asset) => asset.urlOrData.trim())
+    .filter(Boolean);
+  const ratio = normalizedDraft.options.ratio === '9:16'
+    ? '720x1280'
+    : normalizedDraft.options.ratio === '1:1'
+      ? '720x720'
+      : '1280x720';
+  const payload = await requestJson('/video/generations', {
+    method: 'POST',
+    body: JSON.stringify({
+      model,
+      prompt: normalizedDraft.prompt.rawPrompt,
+      duration: normalizedDraft.options.duration || 5,
+      size: ratio,
+      ...(images.length > 0 ? { images } : {}),
+    }),
+  }, 'openai');
+  return mapTask(payload);
+}
+
+export async function getOpenAiVideoTask(taskId: string): Promise<SeedanceApiTask> {
+  const normalizedTaskId = taskId.trim();
+  if (!normalizedTaskId) throw new Error('任务 ID 不能为空。');
+  const payload = await requestJson(`/video/generations/${encodeURIComponent(normalizedTaskId)}`, {
+    method: 'GET',
+  }, 'openai');
+  return mapTask(payload);
+}
+
+export async function deleteOpenAiVideoTask(taskId: string): Promise<void> {
+  const normalizedTaskId = taskId.trim();
+  if (!normalizedTaskId) throw new Error('任务 ID 不能为空。');
+  await requestJson(`/video/generations/${encodeURIComponent(normalizedTaskId)}`, { method: 'DELETE' }, 'openai');
 }
 
 export async function getSeedanceTask(taskId: string): Promise<SeedanceApiTask> {

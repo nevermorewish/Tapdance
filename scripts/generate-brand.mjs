@@ -11,5 +11,10 @@ writeFileSync(join(configDir, 'activeBrand.ts'), source, 'utf8');
 const packagePath = join(ROOT, 'package.json');
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
 const build = packageJson.build || {};
+if (Array.isArray(build.publish)) {
+  build.publish = build.publish.map((entry) => entry?.provider === 'generic'
+    ? { ...entry, url: brand.updateFeedBaseUrl }
+    : entry);
+}
 writeFileSync(join(ROOT, 'electron-builder.generated.json'), `${JSON.stringify(build, null, 2)}\n`, 'utf8');
 console.log(`[brand] ${brand.id}: loaded service/model configuration`);
