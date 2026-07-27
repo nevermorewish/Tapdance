@@ -10,7 +10,6 @@ import {
   StudioSelect,
 } from '../../../components/studio/StudioPrimitives.tsx';
 import type { WorkspaceThemeMode } from '../../../components/studio/WorkspaceViews.tsx';
-import { saveMediaToAssetLibrary } from '../../../services/assetLibrary.ts';
 import {
   buildSeedreamGeneratedPortraitPrompt,
   buildPortraitLibraryFileUrl,
@@ -159,10 +158,6 @@ const BROWSER_DIRECTORY_INPUT_PROPS = {
   directory: '',
   webkitdirectory: '',
 } as const;
-const REAL_PORTRAIT_LIBRARY_GROUP_NAME = '人像素材库';
-const REAL_PORTRAIT_LIBRARY_PROJECT_NAME = '真人人像';
-const VIRTUAL_PORTRAIT_LIBRARY_PROJECT_NAME = '虚拟人像上传';
-const SEEDREAM_PORTRAIT_LIBRARY_PROJECT_NAME = 'Seedream 生成';
 const EMPTY_REAL_PORTRAIT_DRAFT: RealPortraitDraftState = {
   description: '',
   assetId: '',
@@ -1402,23 +1397,14 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
         projectName,
         initialStatusWaitMs: 0,
       });
-      setVirtualPortraitUploadStep('保存本地预览...');
+      setVirtualPortraitUploadStep('保存客户端记录...');
 
       const recordId = crypto.randomUUID?.() || `virtual-portrait-${Date.now()}`;
-      const savedFile = await saveMediaToAssetLibrary({
-        sourceUrl: imageDataUrl,
-        kind: 'image',
-        assetId: `portrait-library:virtual:${recordId}`,
-        title: description,
-        groupName: REAL_PORTRAIT_LIBRARY_GROUP_NAME,
-        projectName: VIRTUAL_PORTRAIT_LIBRARY_PROJECT_NAME,
-        fileNameHint: virtualPortraitDraft.fileNameHint || file.name || '',
-      });
       const nextAsset: VirtualPortraitLibraryAsset = {
         id: recordId,
         description,
         assetId: uploadResult.asset.id,
-        imageUrl: savedFile.url,
+        imageUrl: uploadResult.asset.url || uploadResult.uploadedUrl,
         groupId: uploadResult.group.id,
         groupName: uploadResult.group.name || groupName,
         projectName: uploadResult.asset.projectName || projectName,
@@ -1728,22 +1714,13 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
         assetId = uploadedRealPortrait.asset.id;
       }
 
-      setRealPortraitUploadStep('保存本地预览...');
+      setRealPortraitUploadStep('保存客户端记录...');
       const recordId = crypto.randomUUID?.() || `real-portrait-${Date.now()}`;
-      const savedFile = await saveMediaToAssetLibrary({
-        sourceUrl: imageDataUrl,
-        kind: 'image',
-        assetId: `portrait-library:real:${recordId}`,
-        title: description,
-        groupName: REAL_PORTRAIT_LIBRARY_GROUP_NAME,
-        projectName: REAL_PORTRAIT_LIBRARY_PROJECT_NAME,
-        fileNameHint: realPortraitDraft.fileNameHint || '',
-      });
       const nextAsset: RealPortraitLibraryAsset = {
         id: recordId,
         description,
         assetId,
-        imageUrl: savedFile.url,
+        imageUrl: uploadedRealPortrait?.asset.url || uploadedRealPortrait?.uploadedUrl || imageDataUrl,
         groupId: uploadedRealPortrait?.groupId || groupId,
         projectName,
         status: uploadedRealPortrait ? normalizeArkAssetStatus(uploadedRealPortrait.asset.status) : '',
@@ -1793,22 +1770,13 @@ export function PortraitLibraryView({ themeMode, isModal = false, selectionMode 
       const expandedPrompt = buildSeedreamGeneratedPortraitPrompt(prompt);
       const generatedImageUrl = await generateStoryboardImage(expandedPrompt, '16:9', model);
       const description = buildSeedreamPortraitTitle(prompt);
-      const savedFile = await saveMediaToAssetLibrary({
-        sourceUrl: generatedImageUrl,
-        kind: 'image',
-        assetId: `portrait-library:seedream:${recordId}`,
-        title: description,
-        groupName: REAL_PORTRAIT_LIBRARY_GROUP_NAME,
-        projectName: SEEDREAM_PORTRAIT_LIBRARY_PROJECT_NAME,
-        fileNameHint: `seedream-portrait-${recordId}.png`,
-      });
       const nextAsset: SeedreamGeneratedPortraitAsset = {
         id: recordId,
         description,
         model,
         prompt,
         expandedPrompt,
-        imageUrl: savedFile.url,
+        imageUrl: generatedImageUrl,
         createdAt: new Date().toISOString(),
       };
       const nextAssets = await saveSeedreamGeneratedPortraitAssets([nextAsset, ...seedreamPortraitAssets]);
