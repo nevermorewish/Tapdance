@@ -43,6 +43,6 @@ export function loadBrand(id = process.env.BRAND || DEFAULT_BRAND_ID) {
     textModel: brand.textModel,
     imageModel: brand.imageModel,
     videoModel: brand.videoModel.map((value) => String(value).trim()),
-    updateFeedBaseUrl: String(brand.updateFeedBaseUrl || `https://huanxing.tos-cn-beijing.volces.com/package/Tapdance/${brand.id === 'huanxing' ? '' : `${brand.id}/`}latest`).trim(),
+    updateFeedBaseUrl: String(brand.updateFeedBaseUrl || `https://huanxing.tos-cn-beijing.volces.com/package/Tapdance/${brand.id}/latest`).trim(),
   };
 }

@@ -132,7 +132,7 @@
     "publish": [
       {
         "provider": "generic",
-        "url": "https://huanxing.tos-cn-beijing.volces.com/package/Tapdance/latest"
+        "url": "https://huanxing.tos-cn-beijing.volces.com/package/Tapdance/huanxing/latest"
       }
     ]
   }

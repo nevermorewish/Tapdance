@@ -11,6 +11,12 @@ writeFileSync(join(configDir, 'activeBrand.ts'), source, 'utf8');
 const packagePath = join(ROOT, 'package.json');
 const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
 const build = packageJson.build || {};
+if (build.nsis) {
+  build.nsis = {
+    ...build.nsis,
+    artifactName: `\${productName}-${brand.id}-Setup-\${version}.\${ext}`,
+  };
+}
 if (Array.isArray(build.publish)) {
   build.publish = build.publish.map((entry) => entry?.provider === 'generic'
     ? { ...entry, url: brand.updateFeedBaseUrl }

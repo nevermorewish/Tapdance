@@ -44,7 +44,7 @@ async function main() {
   const bucket = TOS_BUCKET;
   const endpoint = TOS_ENDPOINT;
   const objectPrefix = TOS_OBJECT_PREFIX;
-  const brandPrefix = brand === 'huanxing' ? objectPrefix : `${objectPrefix}/${brand}`;
+  const brandPrefix = `${objectPrefix}/${brand}`;
   const versionPrefix = `${brandPrefix}/v${version}`;
   const latestPrefix = `${brandPrefix}/latest`;
 
