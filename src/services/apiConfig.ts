@@ -4,7 +4,11 @@ import { getSeedanceApiModelLabelForSourceId, normalizeSeedanceModelVersion } fr
 import { loadPersistedAppState, savePersistedAppState } from '../features/app/services/appStateStore.ts';
 import { BRAND } from '../config/brand.ts';
 
-export const API_SETTINGS_STATE_KEY = 'api_settings';
+// Keep each branded build's credentials and endpoint isolated. Older builds
+// stored this under the shared `api_settings` key; that legacy value is only
+// reused when it already points at the current brand's service URL.
+export const API_SETTINGS_STATE_KEY = `api_settings_${BRAND.id}`;
+const LEGACY_API_SETTINGS_STATE_KEY = 'api_settings';
 
 export type ModelRole = 'text' | 'image' | 'video';
 export type FlowModelCategory = 'text' | 'image' | 'video';
@@ -733,7 +737,18 @@ export function loadApiSettings(): ApiSettings {
 
 export async function loadPersistedApiSettings(): Promise<ApiSettings> {
   try {
-    const persisted = await loadPersistedAppState<Partial<ApiSettings>>(API_SETTINGS_STATE_KEY);
+    let persisted = await loadPersistedAppState<Partial<ApiSettings>>(API_SETTINGS_STATE_KEY);
+    if (!persisted.value) {
+      // Migrate settings from pre-brand builds only when the endpoint matches
+      // this build. This prevents a Fengchi install from inheriting Huanxing's
+      // previously persisted login address (and vice versa).
+      const legacy = await loadPersistedAppState<Partial<ApiSettings>>(LEGACY_API_SETTINGS_STATE_KEY);
+      const legacyBaseUrl = String(legacy.value?.newapi?.baseUrl || '').trim().replace(/\/+$/u, '').toLowerCase();
+      const brandBaseUrl = BRAND.serviceUrl.replace(/\/+$/u, '').toLowerCase();
+      if (legacy.value && legacyBaseUrl === brandBaseUrl) {
+        persisted = legacy;
+      }
+    }
     cachedApiSettings = mergeApiSettings(persisted.value || undefined);
   } catch (error) {
     console.error('Failed to load API settings from bridge store', error);

@@ -59,7 +59,7 @@ export function NewApiAuthPanel({ apiSettings, setApiSettings, onAuthenticated }
       <h1 className="mt-3 text-3xl font-semibold text-white">{mode === 'login' ? '登录到 NewAPI' : '注册 NewAPI 账号'}</h1>
       <p className="mt-3 text-sm leading-6 text-zinc-400">文本、图片、视频和素材库统一使用此连接。登录后会自动获取账号令牌，无需手工复制 API Key。</p>
       <div className="mt-6 space-y-3">
-        <label className="block text-sm text-zinc-300">NewAPI 地址<input className="studio-input mt-2" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder="https://api.huanxing.ai" /></label>
+        <label className="block text-sm text-zinc-300">NewAPI 地址<input className="studio-input mt-2" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder={BRAND.serviceUrl} /></label>
         <label className="block text-sm text-zinc-300">用户名<input className="studio-input mt-2" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" /></label>
         <label className="block text-sm text-zinc-300">密码<input className="studio-input mt-2" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></label>
         {mode === 'register' ? <>
